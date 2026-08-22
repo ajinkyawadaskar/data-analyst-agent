@@ -14,10 +14,13 @@ cannot use and that guardrails.py will reject if it hallucinates.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Iterable, Literal
 
 from src.config import get_settings
+
+SHARD_RE = re.compile(r"^(.*_)\d{8}$")
 
 CompactionStrategy = Literal["full", "table_summary", "column_sample"]
 
@@ -148,17 +151,37 @@ def introspect(datasets: tuple[str, ...] | None = None) -> SchemaContext:
     for qualified in datasets:
         project, dataset_id = qualified.split(".", 1)
         ref = bigquery.DatasetReference(project, dataset_id)
+
+        # Collapse date-sharded tables (ga_sessions_20170801, ...) into a
+        # single wildcard entry. Introspecting all 366 GA shards yields the
+        # same schema 366 times -- ~1.2M tokens of pure duplication, and
+        # BigQuery queries them via the wildcard anyway.
+        shard_groups: dict[str, list] = {}
+        singles: list = []
         for item in client.list_tables(ref):
+            m = SHARD_RE.match(item.table_id)
+            if m:
+                shard_groups.setdefault(m.group(1), []).append(item)
+            else:
+                singles.append(item)
+
+        for item in singles:
             tbl = client.get_table(item.reference)
+            if not tbl.schema:
+                continue  # empty artifact objects; nothing to expose
             tables.append(
-                Table(
-                    project=project,
-                    dataset=dataset_id,
-                    name=tbl.table_id,
-                    columns=tuple(_flatten(tbl.schema)),
-                    num_rows=tbl.num_rows,
-                )
+                Table(project, dataset_id, tbl.table_id,
+                      tuple(_flatten(tbl.schema)), tbl.num_rows)
             )
+
+        for prefix, items in shard_groups.items():
+            newest = max(items, key=lambda i: i.table_id)
+            tbl = client.get_table(newest.reference)
+            tables.append(
+                Table(project, dataset_id, f"{prefix}*",
+                      tuple(_flatten(tbl.schema)), tbl.num_rows)
+            )
+
     return SchemaContext(tables=tuple(tables), strategy="full")
 
 

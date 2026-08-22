@@ -78,3 +78,32 @@ Also added `dropped_columns` to SchemaContext: when guardrails rejects a
 column, we need to distinguish "model hallucinated it" from "we never
 showed it to the model." Without that, a retrieval failure looks exactly
 like a model failure.
+
+## 2:00 — Credentials landed. Measured the real numbers.
+Project pivotal-purpose-269517, service account job-agent@. First query
+ran: top thelook product categories, 361,201 bytes dry-run.
+
+thelook_ecommerce: 7 tables, 75 columns, ~488 tokens. Small.
+
+google_analytics_sample: 369 objects, of which 366 are ga_sessions_*
+date shards -- all with IDENTICAL schemas. One shard flattens to 338
+columns (322 nested/dotted, 32 RECORD parents, 11 REPEATED), ~3,376
+tokens. Deepest path is four levels:
+  trafficSource.adwordsClickInfo.targetingCriteria.boomUserlistId
+
+Naive introspection of every shard: 366 x 3,376 = **1,235,616 tokens**
+of almost entirely duplicated schema. That is the "schema too big for
+context" problem, measured rather than asserted -- and the cause is
+duplication, not genuine breadth.
+
+Fix (mechanism, in schema.py): collapse `<prefix>_YYYYMMDD` tables into a
+single `<prefix>*` wildcard entry, introspecting only the newest shard.
+BigQuery queries them through the wildcard anyway. Also skip schema-less
+artifact objects (`Google-ecommerce-dataset-table` has 0 columns).
+
+Result: 1,235,616 -> 3,921 tokens for the whole corpus. 315x reduction
+before any compaction strategy is applied at all.
+
+The lesson worth saying out loud in an interview: the first and biggest
+win came from noticing the schema was duplicated, not from a clever
+compaction rule. Compaction is the second-order problem.
