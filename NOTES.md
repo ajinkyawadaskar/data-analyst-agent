@@ -210,3 +210,26 @@ Clean-room check caught two things a working laptop hides:
 Deploy is NOT done: no PaaS CLI on this machine and the account login is
 interactive. Config is written and verified locally; pushing it is a
 manual step.
+
+## 4:40 — Streamlit built; cold start was 30s and had to be fixed
+Two tabs. The one that matters is the guardrail sandbox: paste SQL, watch
+every check run against it, no LLM and no API key needed. It demos the
+actual point of the project and it works before graph.py exists. Seven
+preset examples including the stacked DROP, the CTE-buried DELETE, the
+5.8 GB unfiltered scan, and the free COUNT(*).
+
+Verified in a browser, not just by HTTP 200: sandbox reports "Passed",
+lists all four checks run, and shows 0.003 GB against the 1 GB ceiling.
+
+Problem the browser test exposed that curl never would: **first paint
+took ~30 seconds.** Schema introspection is one get_table call per table
+and it blocked the whole page. On Railway that is a failed healthcheck,
+and in a demo GIF it is unwatchable.
+
+Fix: cache the introspected schema to schema_cache.json.
+  cold (refresh=True):  5.0s
+  warm (from cache):    0.001s
+The 30s in Streamlit was introspection plus Streamlit's own boot; the
+introspection half is now effectively free. Cache is gitignored -- it is
+regenerable, and pinning a stale schema in git would be worse than the
+30 seconds.

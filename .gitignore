@@ -14,3 +14,6 @@ DEPLOY_ENV.local.txt
 
 # internal process doc, not part of the public repo
 CLAUDE.md
+
+# regenerable introspection cache
+schema_cache.json

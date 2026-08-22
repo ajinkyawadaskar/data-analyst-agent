@@ -14,8 +14,11 @@ cannot use and that guardrails.py will reject if it hallucinates.
 
 from __future__ import annotations
 
+import dataclasses
+import json
 import re
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Iterable, Literal
 
 from src.config import get_settings
@@ -131,6 +134,39 @@ def _flatten(schema_fields: Iterable, prefix: str = "") -> list[Column]:
                 Column(name=name, type=f.field_type, mode=f.mode, description=f.description or "")
             )
     return out
+
+
+CACHE_PATH = Path("schema_cache.json")
+
+
+def _to_dict(sc: SchemaContext) -> dict:
+    return {"tables": [
+        {"project": t.project, "dataset": t.dataset, "name": t.name,
+         "num_rows": t.num_rows,
+         "columns": [dataclasses.asdict(c) for c in t.columns]}
+        for t in sc.tables]}
+
+
+def _from_dict(raw: dict) -> SchemaContext:
+    return SchemaContext(tables=tuple(
+        Table(project=t["project"], dataset=t["dataset"], name=t["name"],
+              num_rows=t["num_rows"],
+              columns=tuple(Column(**c) for c in t["columns"]))
+        for t in raw["tables"]))
+
+
+def load_or_introspect(refresh: bool = False) -> SchemaContext:
+    """Introspection takes ~30s (one get_table call per table). The schema
+    does not change between runs, so cache it to disk.
+
+    Without this, every cold start -- Streamlit boot, a Railway container
+    restart, the healthcheck -- pays the full 30 seconds.
+    """
+    if not refresh and CACHE_PATH.exists():
+        return _from_dict(json.loads(CACHE_PATH.read_text()))
+    sc = introspect()
+    CACHE_PATH.write_text(json.dumps(_to_dict(sc), indent=1))
+    return sc
 
 
 def introspect(datasets: tuple[str, ...] | None = None) -> SchemaContext:
