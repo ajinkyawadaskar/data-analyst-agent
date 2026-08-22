@@ -46,3 +46,17 @@ narrative, but one flat table).
 Open tradeoff, flagged not resolved: a single dataset makes the table
 allowlist nearly a no-op and weakens the "schema too big for context"
 problem, which is one of the four decisions I have to defend.
+
+## 1:05 — Second dataset: google_analytics_sample
+Added `bigquery-public-data.google_analytics_sample` alongside thelook.
+
+Reasoning: GA360 session data is the canonical digital-marketing corpus,
+which matches the growth/marketing DS roles I apply to, and its nested
+RECORD/REPEATED schema is genuinely too large to dump into a prompt --
+so schema compaction stays a real decision instead of a formality.
+Nested column paths also stress column validation far harder than flat
+tables do.
+
+Accepted cost: two datasets in the same broad domain make a blocked
+cross-domain join less dramatic than retail-vs-banking would have been.
+Profile fit judged worth more than demo drama.

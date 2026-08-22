@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     # Corpus. Fully-qualified dataset ids the agent is permitted to touch.
     allowed_datasets: tuple[str, ...] = (
         "bigquery-public-data.thelook_ecommerce",
+        "bigquery-public-data.google_analytics_sample",
     )
 
     # Guardrail thresholds
