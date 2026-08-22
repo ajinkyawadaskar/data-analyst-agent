@@ -8,6 +8,11 @@ cost check still cannot run away.
 
 from __future__ import annotations
 
+import base64
+import json
+import os
+import tempfile
+from pathlib import Path
 from typing import Any
 
 from google.cloud import bigquery
@@ -15,8 +20,33 @@ from google.cloud import bigquery
 from src.config import get_settings
 
 
+def _materialize_credentials() -> None:
+    """Write the service-account JSON to disk if it arrived as an env var.
+
+    The key file cannot be committed, and most PaaS hosts only offer
+    environment variables. So in deployment the JSON is passed as
+    GOOGLE_APPLICATION_CREDENTIALS_JSON (raw or base64) and written to a
+    temp file here, which google-cloud-bigquery then picks up normally.
+    Locally the file already exists and this is a no-op.
+    """
+    raw = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
+    if not raw:
+        return
+    target = Path(tempfile.gettempdir()) / "gcp-sa.json"
+    if not target.exists():
+        try:
+            decoded = base64.b64decode(raw).decode()
+            json.loads(decoded)  # confirm it really was base64 JSON
+        except Exception:  # noqa: BLE001 - not base64, assume raw JSON
+            decoded = raw
+        target.write_text(decoded)
+        target.chmod(0o600)
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(target)
+
+
 def get_client() -> bigquery.Client:
     """Build a BigQuery client from GOOGLE_APPLICATION_CREDENTIALS."""
+    _materialize_credentials()
     settings = get_settings()
     return bigquery.Client(
         project=settings.google_cloud_project or None,

@@ -192,3 +192,21 @@ Options, none chosen yet:
 
 RESUME CONSEQUENCE: the bullet says "Claude / GPT-4 tool-calling". With
 Gemini shipping, that line is now false and must be changed.
+
+## 3:50 — Deploy prep, and the container credential problem
+The service-account JSON is gitignored, so a deployed container has no
+key file. Most PaaS hosts only give you env vars. Fix: pass the JSON as
+GOOGLE_APPLICATION_CREDENTIALS_JSON (base64 or raw) and materialize it
+to a temp file at client construction. Verified by round-trip -- unset
+the file path, set the env var, ran a real query: 29,120 products.
+
+Clean-room check caught two things a working laptop hides:
+- pydantic-settings was never in requirements.txt. It imported locally
+  only because something else pulled it in transitively.
+- deepeval and streamlit were in the runtime requirements. Both are heavy
+  and neither is needed by the API. Split into requirements-dev.txt so
+  the deployed build does not compile them.
+
+Deploy is NOT done: no PaaS CLI on this machine and the account login is
+interactive. Config is written and verified locally; pushing it is a
+manual step.

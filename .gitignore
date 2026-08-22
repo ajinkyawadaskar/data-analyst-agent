@@ -8,3 +8,6 @@ __pycache__/
 .pytest_cache/
 service-account*.json
 application_default_credentials.json
+
+# deploy env dump contains the private key
+DEPLOY_ENV.local.txt
