@@ -160,3 +160,35 @@ columns_for(fqn) / all_column_names() / find_tables_with_column(name).
 The deeper lesson is the failure DIRECTION: a lookup miss disabled the
 check and passed the query. Guardrails must fail closed. A silent skip on
 an unknown table means one typo disables column validation corpus-wide.
+
+## 3:30 — Provider switch to Gemini, and a quota problem I can see coming
+No Anthropic or OpenAI credit available, so the LLM is Gemini via AI
+Studio. Third provider decision today: Gemini -> Anthropic (to match the
+resume bullet) -> Gemini (to match reality). Cost of the churn was small
+only because graph.py was still unwritten.
+
+Reused two hard-won facts from P1 (credit-decision-explainer) instead of
+rediscovering them:
+
+1. MODEL NAMES DRIFT. In P1, `gemini-2.0-flash` and `gemini-2.5-flash`
+   were both retired and 404'd. Only `gemini-3.6-flash` worked. So that
+   is what config.py ships, with a note not to write names from memory.
+
+2. FREE-TIER QUOTA IS 20 REQUESTS. P1 hit:
+     429 RESOURCE_EXHAUSTED ... generate_content_free_tier_requests,
+     limit: 20, model: gemini-3.6-flash
+   That killed its LLM-judged metrics at n=1.
+
+Consequence for THIS project, flagged now rather than at 6:45: the eval
+set is 25 answer + 5 adversarial = 30 questions, each needing at least
+one generate_content call, plus up to 2 retries. Worst case ~90 calls
+against a 20-call ceiling. The eval run WILL fail on free tier.
+
+Options, none chosen yet:
+  a) enable billing on the Google API key (cheapest fix in time)
+  b) run evals in batches across quota windows (slow, fragile)
+  c) cut the eval set below the CLAUDE.md-mandated 25+5 (violates DoD #6)
+  d) accept partial results and publish n honestly
+
+RESUME CONSEQUENCE: the bullet says "Claude / GPT-4 tool-calling". With
+Gemini shipping, that line is now false and must be changed.

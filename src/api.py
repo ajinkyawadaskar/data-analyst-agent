@@ -58,7 +58,7 @@ def health() -> HealthResponse:
         except Exception as exc:  # noqa: BLE001 - health must not raise
             bq = f"error: {type(exc).__name__}"
 
-    llm = "ok" if settings.anthropic_api_key else "unconfigured"
+    llm = "ok" if settings.google_api_key else "unconfigured"
     agent = "ok" if _load_graph() is not None else "not_implemented"
 
     status = "ok" if bq == "ok" and llm == "ok" and agent == "ok" else "degraded"

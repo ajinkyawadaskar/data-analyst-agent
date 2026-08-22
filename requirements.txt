@@ -1,7 +1,7 @@
 google-cloud-bigquery>=3.25
 sqlglot>=25.0
 langgraph>=0.2
-anthropic>=0.40
+langchain-google-genai==4.3.5
 fastapi>=0.115
 uvicorn>=0.30
 pydantic>=2.8

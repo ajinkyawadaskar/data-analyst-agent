@@ -2,8 +2,17 @@
 
 OWNER: Ajinkya. Do not let the assistant fill this in.
 
-langgraph 1.2.11 and anthropic 1.0.0 are installed. Model is
-claude-opus-5 (settings.llm_model). Set ANTHROPIC_API_KEY in .env.
+langgraph 1.2.11 and langchain-google-genai 4.3.5 are installed. Model is
+gemini-3.6-flash (settings.llm_model). Set GOOGLE_API_KEY in .env.
+
+MODEL NAMES: do not write one from memory. In P1 (credit-decision-explainer)
+gemini-2.0-flash and gemini-2.5-flash were both retired and 404'd; only
+gemini-3.6-flash worked. Probe before you trust a name.
+
+FREE-TIER QUOTA IS A REAL CONSTRAINT: P1 hit
+"429 RESOURCE_EXHAUSTED ... free_tier_requests, limit: 20". Twenty requests
+total. A 30-case eval run with retries will exceed that. Plan for it --
+see NOTES.md 3:30.
 
 --------------------------------------------------------------------------
 WHAT THIS MODULE MUST DO
