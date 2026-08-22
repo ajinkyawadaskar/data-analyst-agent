@@ -11,3 +11,6 @@ application_default_credentials.json
 
 # deploy env dump contains the private key
 DEPLOY_ENV.local.txt
+
+# internal process doc, not part of the public repo
+CLAUDE.md
