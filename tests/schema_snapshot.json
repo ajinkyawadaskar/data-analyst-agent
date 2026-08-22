@@ -1,0 +1,2586 @@
+{
+ "tables": [
+  {
+   "project": "bigquery-public-data",
+   "dataset": "thelook_ecommerce",
+   "name": "distribution_centers",
+   "num_rows": 10,
+   "columns": [
+    {
+     "name": "id",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "name",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "latitude",
+     "type": "FLOAT",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "longitude",
+     "type": "FLOAT",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "distribution_center_geom",
+     "type": "GEOGRAPHY",
+     "mode": "NULLABLE",
+     "description": ""
+    }
+   ]
+  },
+  {
+   "project": "bigquery-public-data",
+   "dataset": "thelook_ecommerce",
+   "name": "events",
+   "num_rows": 2420233,
+   "columns": [
+    {
+     "name": "id",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "user_id",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "sequence_number",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "session_id",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "created_at",
+     "type": "TIMESTAMP",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "ip_address",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "city",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "state",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "postal_code",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "browser",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "traffic_source",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "uri",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "event_type",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    }
+   ]
+  },
+  {
+   "project": "bigquery-public-data",
+   "dataset": "thelook_ecommerce",
+   "name": "inventory_items",
+   "num_rows": 488841,
+   "columns": [
+    {
+     "name": "id",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "product_id",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "created_at",
+     "type": "TIMESTAMP",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "sold_at",
+     "type": "TIMESTAMP",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "cost",
+     "type": "FLOAT",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "product_category",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "product_name",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "product_brand",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "product_retail_price",
+     "type": "FLOAT",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "product_department",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "product_sku",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "product_distribution_center_id",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    }
+   ]
+  },
+  {
+   "project": "bigquery-public-data",
+   "dataset": "thelook_ecommerce",
+   "name": "order_items",
+   "num_rows": 180804,
+   "columns": [
+    {
+     "name": "id",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "order_id",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "user_id",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "product_id",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "inventory_item_id",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "status",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "created_at",
+     "type": "TIMESTAMP",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "shipped_at",
+     "type": "TIMESTAMP",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "delivered_at",
+     "type": "TIMESTAMP",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "returned_at",
+     "type": "TIMESTAMP",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "sale_price",
+     "type": "FLOAT",
+     "mode": "NULLABLE",
+     "description": ""
+    }
+   ]
+  },
+  {
+   "project": "bigquery-public-data",
+   "dataset": "thelook_ecommerce",
+   "name": "orders",
+   "num_rows": 124780,
+   "columns": [
+    {
+     "name": "order_id",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "user_id",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "status",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "gender",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "created_at",
+     "type": "TIMESTAMP",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "returned_at",
+     "type": "TIMESTAMP",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "shipped_at",
+     "type": "TIMESTAMP",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "delivered_at",
+     "type": "TIMESTAMP",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "num_of_item",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    }
+   ]
+  },
+  {
+   "project": "bigquery-public-data",
+   "dataset": "thelook_ecommerce",
+   "name": "products",
+   "num_rows": 29120,
+   "columns": [
+    {
+     "name": "id",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "cost",
+     "type": "FLOAT",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "category",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "name",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "brand",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "retail_price",
+     "type": "FLOAT",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "department",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "sku",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "distribution_center_id",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    }
+   ]
+  },
+  {
+   "project": "bigquery-public-data",
+   "dataset": "thelook_ecommerce",
+   "name": "users",
+   "num_rows": 100000,
+   "columns": [
+    {
+     "name": "id",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "first_name",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "last_name",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "email",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "age",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "gender",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "state",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "street_address",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "postal_code",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "city",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "country",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "latitude",
+     "type": "FLOAT",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "longitude",
+     "type": "FLOAT",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "traffic_source",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "created_at",
+     "type": "TIMESTAMP",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "user_geom",
+     "type": "GEOGRAPHY",
+     "mode": "NULLABLE",
+     "description": ""
+    }
+   ]
+  },
+  {
+   "project": "bigquery-public-data",
+   "dataset": "google_analytics_sample",
+   "name": "daily_total_visits",
+   "num_rows": 366,
+   "columns": [
+    {
+     "name": "visit_date",
+     "type": "DATE",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "total_visits",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    }
+   ]
+  },
+  {
+   "project": "bigquery-public-data",
+   "dataset": "google_analytics_sample",
+   "name": "daily_visits",
+   "num_rows": 367,
+   "columns": [
+    {
+     "name": "visit_date",
+     "type": "DATE",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "total_visits",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    }
+   ]
+  },
+  {
+   "project": "bigquery-public-data",
+   "dataset": "google_analytics_sample",
+   "name": "ga_sessions_*",
+   "num_rows": 2556,
+   "columns": [
+    {
+     "name": "visitorId",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "visitNumber",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "visitId",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "visitStartTime",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "date",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "totals",
+     "type": "RECORD",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "totals.visits",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "totals.hits",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "totals.pageviews",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "totals.timeOnSite",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "totals.bounces",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "totals.transactions",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "totals.transactionRevenue",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "totals.newVisits",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "totals.screenviews",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "totals.uniqueScreenviews",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "totals.timeOnScreen",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "totals.totalTransactionRevenue",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "totals.sessionQualityDim",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "trafficSource",
+     "type": "RECORD",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "trafficSource.referralPath",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "trafficSource.campaign",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "trafficSource.source",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "trafficSource.medium",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "trafficSource.keyword",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "trafficSource.adContent",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "trafficSource.adwordsClickInfo",
+     "type": "RECORD",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "trafficSource.adwordsClickInfo.campaignId",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "trafficSource.adwordsClickInfo.adGroupId",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "trafficSource.adwordsClickInfo.creativeId",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "trafficSource.adwordsClickInfo.criteriaId",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "trafficSource.adwordsClickInfo.page",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "trafficSource.adwordsClickInfo.slot",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "trafficSource.adwordsClickInfo.criteriaParameters",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "trafficSource.adwordsClickInfo.gclId",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "trafficSource.adwordsClickInfo.customerId",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "trafficSource.adwordsClickInfo.adNetworkType",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "trafficSource.adwordsClickInfo.targetingCriteria",
+     "type": "RECORD",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "trafficSource.adwordsClickInfo.targetingCriteria.boomUserlistId",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "trafficSource.adwordsClickInfo.isVideoAd",
+     "type": "BOOLEAN",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "trafficSource.isTrueDirect",
+     "type": "BOOLEAN",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "trafficSource.campaignCode",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "device",
+     "type": "RECORD",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "device.browser",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "device.browserVersion",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "device.browserSize",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "device.operatingSystem",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "device.operatingSystemVersion",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "device.isMobile",
+     "type": "BOOLEAN",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "device.mobileDeviceBranding",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "device.mobileDeviceModel",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "device.mobileInputSelector",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "device.mobileDeviceInfo",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "device.mobileDeviceMarketingName",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "device.flashVersion",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "device.javaEnabled",
+     "type": "BOOLEAN",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "device.language",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "device.screenColors",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "device.screenResolution",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "device.deviceCategory",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "geoNetwork",
+     "type": "RECORD",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "geoNetwork.continent",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "geoNetwork.subContinent",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "geoNetwork.country",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "geoNetwork.region",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "geoNetwork.metro",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "geoNetwork.city",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "geoNetwork.cityId",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "geoNetwork.networkDomain",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "geoNetwork.latitude",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "geoNetwork.longitude",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "geoNetwork.networkLocation",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "customDimensions",
+     "type": "RECORD",
+     "mode": "REPEATED",
+     "description": ""
+    },
+    {
+     "name": "customDimensions.index",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "customDimensions.value",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits",
+     "type": "RECORD",
+     "mode": "REPEATED",
+     "description": ""
+    },
+    {
+     "name": "hits.hitNumber",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.time",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.hour",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.minute",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.isSecure",
+     "type": "BOOLEAN",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.isInteraction",
+     "type": "BOOLEAN",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.isEntrance",
+     "type": "BOOLEAN",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.isExit",
+     "type": "BOOLEAN",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.referer",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.page",
+     "type": "RECORD",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.page.pagePath",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.page.hostname",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.page.pageTitle",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.page.searchKeyword",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.page.searchCategory",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.page.pagePathLevel1",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.page.pagePathLevel2",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.page.pagePathLevel3",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.page.pagePathLevel4",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.transaction",
+     "type": "RECORD",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.transaction.transactionId",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.transaction.transactionRevenue",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.transaction.transactionTax",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.transaction.transactionShipping",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.transaction.affiliation",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.transaction.currencyCode",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.transaction.localTransactionRevenue",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.transaction.localTransactionTax",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.transaction.localTransactionShipping",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.transaction.transactionCoupon",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.item",
+     "type": "RECORD",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.item.transactionId",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.item.productName",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.item.productCategory",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.item.productSku",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.item.itemQuantity",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.item.itemRevenue",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.item.currencyCode",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.item.localItemRevenue",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.contentInfo",
+     "type": "RECORD",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.contentInfo.contentDescription",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.appInfo",
+     "type": "RECORD",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.appInfo.name",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.appInfo.version",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.appInfo.id",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.appInfo.installerId",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.appInfo.appInstallerId",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.appInfo.appName",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.appInfo.appVersion",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.appInfo.appId",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.appInfo.screenName",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.appInfo.landingScreenName",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.appInfo.exitScreenName",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.appInfo.screenDepth",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.exceptionInfo",
+     "type": "RECORD",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.exceptionInfo.description",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.exceptionInfo.isFatal",
+     "type": "BOOLEAN",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.exceptionInfo.exceptions",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.exceptionInfo.fatalExceptions",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.eventInfo",
+     "type": "RECORD",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.eventInfo.eventCategory",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.eventInfo.eventAction",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.eventInfo.eventLabel",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.eventInfo.eventValue",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.product",
+     "type": "RECORD",
+     "mode": "REPEATED",
+     "description": ""
+    },
+    {
+     "name": "hits.product.productSKU",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.product.v2ProductName",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.product.v2ProductCategory",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.product.productVariant",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.product.productBrand",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.product.productRevenue",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.product.localProductRevenue",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.product.productPrice",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.product.localProductPrice",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.product.productQuantity",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.product.productRefundAmount",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.product.localProductRefundAmount",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.product.isImpression",
+     "type": "BOOLEAN",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.product.isClick",
+     "type": "BOOLEAN",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.product.customDimensions",
+     "type": "RECORD",
+     "mode": "REPEATED",
+     "description": ""
+    },
+    {
+     "name": "hits.product.customDimensions.index",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.product.customDimensions.value",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.product.customMetrics",
+     "type": "RECORD",
+     "mode": "REPEATED",
+     "description": ""
+    },
+    {
+     "name": "hits.product.customMetrics.index",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.product.customMetrics.value",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.product.productListName",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.product.productListPosition",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.product.productCouponCode",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.promotion",
+     "type": "RECORD",
+     "mode": "REPEATED",
+     "description": ""
+    },
+    {
+     "name": "hits.promotion.promoId",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.promotion.promoName",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.promotion.promoCreative",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.promotion.promoPosition",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.promotionActionInfo",
+     "type": "RECORD",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.promotionActionInfo.promoIsView",
+     "type": "BOOLEAN",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.promotionActionInfo.promoIsClick",
+     "type": "BOOLEAN",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.refund",
+     "type": "RECORD",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.refund.refundAmount",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.refund.localRefundAmount",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.eCommerceAction",
+     "type": "RECORD",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.eCommerceAction.action_type",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.eCommerceAction.step",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.eCommerceAction.option",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.experiment",
+     "type": "RECORD",
+     "mode": "REPEATED",
+     "description": ""
+    },
+    {
+     "name": "hits.experiment.experimentId",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.experiment.experimentVariant",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher",
+     "type": "RECORD",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.dfpClicks",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.dfpImpressions",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.dfpMatchedQueries",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.dfpMeasurableImpressions",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.dfpQueries",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.dfpRevenueCpm",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.dfpRevenueCpc",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.dfpViewableImpressions",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.dfpPagesViewed",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.adsenseBackfillDfpClicks",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.adsenseBackfillDfpImpressions",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.adsenseBackfillDfpMatchedQueries",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.adsenseBackfillDfpMeasurableImpressions",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.adsenseBackfillDfpQueries",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.adsenseBackfillDfpRevenueCpm",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.adsenseBackfillDfpRevenueCpc",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.adsenseBackfillDfpViewableImpressions",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.adsenseBackfillDfpPagesViewed",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.adxBackfillDfpClicks",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.adxBackfillDfpImpressions",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.adxBackfillDfpMatchedQueries",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.adxBackfillDfpMeasurableImpressions",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.adxBackfillDfpQueries",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.adxBackfillDfpRevenueCpm",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.adxBackfillDfpRevenueCpc",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.adxBackfillDfpViewableImpressions",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.adxBackfillDfpPagesViewed",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.adxClicks",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.adxImpressions",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.adxMatchedQueries",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.adxMeasurableImpressions",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.adxQueries",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.adxRevenue",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.adxViewableImpressions",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.adxPagesViewed",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.adsViewed",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.adsUnitsViewed",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.adsUnitsMatched",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.viewableAdsViewed",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.measurableAdsViewed",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.adsPagesViewed",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.adsClicked",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.adsRevenue",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.dfpAdGroup",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.dfpAdUnits",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher.dfpNetworkId",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.customVariables",
+     "type": "RECORD",
+     "mode": "REPEATED",
+     "description": ""
+    },
+    {
+     "name": "hits.customVariables.index",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.customVariables.customVarName",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.customVariables.customVarValue",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.customDimensions",
+     "type": "RECORD",
+     "mode": "REPEATED",
+     "description": ""
+    },
+    {
+     "name": "hits.customDimensions.index",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.customDimensions.value",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.customMetrics",
+     "type": "RECORD",
+     "mode": "REPEATED",
+     "description": ""
+    },
+    {
+     "name": "hits.customMetrics.index",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.customMetrics.value",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.type",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.social",
+     "type": "RECORD",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.social.socialInteractionNetwork",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.social.socialInteractionAction",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.social.socialInteractions",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.social.socialInteractionTarget",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.social.socialNetwork",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.social.uniqueSocialInteractions",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.social.hasSocialSourceReferral",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.social.socialInteractionNetworkAction",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.latencyTracking",
+     "type": "RECORD",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.latencyTracking.pageLoadSample",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.latencyTracking.pageLoadTime",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.latencyTracking.pageDownloadTime",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.latencyTracking.redirectionTime",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.latencyTracking.speedMetricsSample",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.latencyTracking.domainLookupTime",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.latencyTracking.serverConnectionTime",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.latencyTracking.serverResponseTime",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.latencyTracking.domLatencyMetricsSample",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.latencyTracking.domInteractiveTime",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.latencyTracking.domContentLoadedTime",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.latencyTracking.userTimingValue",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.latencyTracking.userTimingSample",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.latencyTracking.userTimingVariable",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.latencyTracking.userTimingCategory",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.latencyTracking.userTimingLabel",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.sourcePropertyInfo",
+     "type": "RECORD",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.sourcePropertyInfo.sourcePropertyDisplayName",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.sourcePropertyInfo.sourcePropertyTrackingId",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.contentGroup",
+     "type": "RECORD",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.contentGroup.contentGroup1",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.contentGroup.contentGroup2",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.contentGroup.contentGroup3",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.contentGroup.contentGroup4",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.contentGroup.contentGroup5",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.contentGroup.previousContentGroup1",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.contentGroup.previousContentGroup2",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.contentGroup.previousContentGroup3",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.contentGroup.previousContentGroup4",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.contentGroup.previousContentGroup5",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.contentGroup.contentGroupUniqueViews1",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.contentGroup.contentGroupUniqueViews2",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.contentGroup.contentGroupUniqueViews3",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.contentGroup.contentGroupUniqueViews4",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.contentGroup.contentGroupUniqueViews5",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.dataSource",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos",
+     "type": "RECORD",
+     "mode": "REPEATED",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.dfpClicks",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.dfpImpressions",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.dfpMatchedQueries",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.dfpMeasurableImpressions",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.dfpQueries",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.dfpRevenueCpm",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.dfpRevenueCpc",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.dfpViewableImpressions",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.dfpPagesViewed",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.adsenseBackfillDfpClicks",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.adsenseBackfillDfpImpressions",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.adsenseBackfillDfpMatchedQueries",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.adsenseBackfillDfpMeasurableImpressions",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.adsenseBackfillDfpQueries",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.adsenseBackfillDfpRevenueCpm",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.adsenseBackfillDfpRevenueCpc",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.adsenseBackfillDfpViewableImpressions",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.adsenseBackfillDfpPagesViewed",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.adxBackfillDfpClicks",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.adxBackfillDfpImpressions",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.adxBackfillDfpMatchedQueries",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.adxBackfillDfpMeasurableImpressions",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.adxBackfillDfpQueries",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.adxBackfillDfpRevenueCpm",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.adxBackfillDfpRevenueCpc",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.adxBackfillDfpViewableImpressions",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.adxBackfillDfpPagesViewed",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.adxClicks",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.adxImpressions",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.adxMatchedQueries",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.adxMeasurableImpressions",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.adxQueries",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.adxRevenue",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.adxViewableImpressions",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.adxPagesViewed",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.adsViewed",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.adsUnitsViewed",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.adsUnitsMatched",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.viewableAdsViewed",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.measurableAdsViewed",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.adsPagesViewed",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.adsClicked",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.adsRevenue",
+     "type": "INTEGER",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.dfpAdGroup",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.dfpAdUnits",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "hits.publisher_infos.dfpNetworkId",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "fullVisitorId",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "userId",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "clientId",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "channelGrouping",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    },
+    {
+     "name": "socialEngagementType",
+     "type": "STRING",
+     "mode": "NULLABLE",
+     "description": ""
+    }
+   ]
+  }
+ ]
+}
