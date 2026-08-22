@@ -107,3 +107,30 @@ before any compaction strategy is applied at all.
 The lesson worth saying out loud in an interview: the first and biggest
 win came from noticing the schema was duplicated, not from a clever
 compaction rule. Compaction is the second-order problem.
+
+## 2:45 — Candidate eval cases drafted and VERIFIED by execution
+16 answer candidates + 5 adversarial, drafted against real column names.
+Every expected_sql was executed, not just written: all 16 return rows,
+39.3 MB scanned total, 0 failures. Ground truth that has never been run
+is not ground truth.
+
+Sample verified answers: AOV $86.67; 10.13% of orders returned; GA
+Aug-2016 session-to-transaction conversion 1.532%; avg 4.85 pageviews
+per session; referral medium bounce rate 70.94%.
+
+## 2:50 — The 1 GB ceiling is well placed, measured not guessed
+Dry-run probes against the real corpus:
+  SELECT * across all 366 GA shards, no filter   5.767 GB   TRIPS
+  SELECT * GA one month                          0.794 GB   passes
+  SELECT COUNT(*) all GA shards                  0.000 GB   passes
+  SELECT * thelook.events                        0.384 GB   passes
+
+So 1 GB sits in a genuinely useful spot: it blocks the unfiltered
+full-history scan (the query the guard exists for) while allowing every
+legitimate question in the eval set. Note COUNT(*) across all shards is
+free -- BigQuery answers it from metadata -- so "touches all shards" is
+NOT the same as "expensive". A guard that reasoned about shard count
+instead of bytes would produce a false positive there.
+
+adv04 is therefore a real test, not a hypothetical: 5.767 GB against a
+1 GB ceiling.
