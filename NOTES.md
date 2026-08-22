@@ -134,3 +134,29 @@ instead of bytes would produce a false positive there.
 
 adv04 is therefore a real test, not a hypothetical: 5.767 GB against a
 1 GB ceiling.
+
+## 3:15 — My bug: /health broke the moment graph.py existed as a stub
+_load_graph() caught ImportError but not NotImplementedError, so as soon
+as the stub file appeared, /health went from a clean "degraded" report to
+a 500 with a full traceback. The endpoint whose entire promise was "never
+raise" was the one that broke.
+
+Cause: I wrote the guard against "file missing" when the real states are
+missing / stub / broken / working. Now catches all four.
+
+Worth keeping in the writeup: the health check was only ever tested in
+the state it was written for.
+
+## 3:10 — guardrails.py column validation failed OPEN (API mismatch, my fault)
+_schema_columns_for() expected schema_context.tables to be a dict of
+table -> columns. SchemaContext.tables is a tuple of Table dataclasses,
+so every lookup returned None, which the code treats as "table unknown,
+skip" -- and a hallucinated column passed all four checks.
+
+Root cause is mine: I landed SchemaContext without documenting its API,
+so guardrails.py was written against a guessed shape. Real API is
+columns_for(fqn) / all_column_names() / find_tables_with_column(name).
+
+The deeper lesson is the failure DIRECTION: a lookup miss disabled the
+check and passed the query. Guardrails must fail closed. A silent skip on
+an unknown table means one typo disables column validation corpus-wide.

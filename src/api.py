@@ -23,12 +23,23 @@ app = FastAPI(
 
 
 def _load_graph():
-    """Import the compiled agent graph, or None if not yet written."""
+    """Import and build the compiled agent graph, or None if not usable.
+
+    Returns None for both "module absent" and "module is still a stub"
+    (NotImplementedError). Health must never raise -- a 500 on /health
+    during a deploy tells you nothing about what is actually wrong.
+    """
     try:
         from src.graph import build_graph  # owner: Ajinkya
     except ImportError:
         return None
-    return build_graph()
+    try:
+        return build_graph()
+    except NotImplementedError:
+        return None
+    except Exception:  # noqa: BLE001
+        log.exception("graph failed to build")
+        return None
 
 
 @app.get("/health", response_model=HealthResponse)

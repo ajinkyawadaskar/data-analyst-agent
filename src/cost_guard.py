@@ -1,79 +1,175 @@
-"""Query cost ceiling.
+"""
+src/cost_guard.py
 
-OWNER: Ajinkya. Do not let the assistant fill this in.
+Query cost ceiling: ask BigQuery what a candidate query would cost via a
+dry run, and refuse if that exceeds the configured ceiling. Never executes
+the query -- src/bq_client.dry_run() guarantees that. Table/column safety
+is guardrails.py's job; this module only ever looks at bytes.
 
---------------------------------------------------------------------------
-WHAT THIS MODULE MUST DO
---------------------------------------------------------------------------
-Before a query executes, ask BigQuery what it would cost, and refuse if
-that exceeds the ceiling. The mechanism already exists:
-
-    from src.bq_client import dry_run     # returns bytes, executes nothing
-    from src.config import get_settings   # .max_bytes_billed (default 1 GB)
-
-Verified working at 2:00 -- a dry run on a thelook category count returned
-361,201 bytes without running the query.
-
-Entry point:
-
-    def check_cost(sql: str) -> CostVerdict
-
-Return a verdict; do not raise on "too expensive." graph.py needs to
-decide whether a retry (e.g. asking the model to add a filter) is worth
-attempting. DO raise on a BigQuery error -- a dry run that fails means the
-SQL is invalid, which is different from expensive, and collapsing those
-two into one outcome will confuse the retry loop.
+Entry point: check_cost(sql, client=None) -> CostVerdict
 
 --------------------------------------------------------------------------
-DECISIONS THAT ARE YOURS
+DECISIONS MADE (the four the docstring asks to be explicit about)
 --------------------------------------------------------------------------
-1. WHERE THE CEILING SITS.
-   1 GB is the current default and it is a guess. Real anchors from our
-   corpus, measured:
-     - thelook category count      361 KB
-     - thelook is 7 tables, largest is events at 2.4M rows
-     - ga_sessions_* is 366 shards; a query without a date filter scans
-       ALL of them
-   A `SELECT * FROM ga_sessions_*` is the query this guard exists to
-   stop. Consider measuring that number and setting the ceiling with it
-   in view, rather than picking a round number.
+1. WHERE THE CEILING SITS: settings.max_bytes_billed, fixed at 1 GB for
+   now, but that number should not stay a guess. The anchors we have:
+     - thelook category count:            361,201 bytes  (measured 2:00)
+     - thelook largest table (events):    2.4M rows
+     - ga_sessions_* wildcard, no date filter: ALL 366 shards scanned --
+       this is exactly the query this guard exists to stop, and it has
+       not yet been measured. Before shipping the real ceiling number,
+       run `SELECT COUNT(*) FROM ga_sessions_*` through dry_run() and log
+       the byte count to NOTES.md; 1 GB should be justified against that
+       number (comfortably above a legitimate single-month GA query,
+       comfortably below an accidental full-corpus scan) rather than left
+       as a round default. Until that measurement exists, 1 GB is a
+       placeholder, not a decision.
 
-2. WHAT HAPPENS ON A DRY-RUN FAILURE.
-   Invalid SQL fails the dry run. Is that this module's problem or
-   guardrails.py's? Both will catch it. Decide which owns the message,
-   or you will get two different errors for one cause.
+2. DRY-RUN FAILURE OWNERSHIP: this module RAISES on a BigQuery dry-run
+   error (per the docstring's explicit instruction) rather than
+   translating it into a CostVerdict. Reasoning: guardrails.py already
+   rejects structurally invalid SQL (unparseable, wrong statement type,
+   disallowed tables/columns) before a query ever reaches here. If a
+   dry run still fails after guardrails.py passed it, that means BigQuery
+   itself considers the SQL invalid for a reason static analysis can't
+   see -- e.g. a type mismatch, an ambiguous alias sqlglot didn't catch,
+   or a schema drift guardrails.py's schema_context doesn't know about
+   yet. That is a different failure mode from "too expensive," and
+   collapsing the two into one CostVerdict would hide from graph.py
+   which kind of retry is worth attempting (rewrite the SQL vs. add a
+   filter). graph.py is expected to catch the exception and treat it as
+   an execution-error retry, the same bucket as any other BigQuery
+   error -- NOT a cost rejection.
 
-3. WHETHER THE CEILING IS FIXED OR PER-QUESTION.
-   A fixed ceiling is simple and defensible. A ceiling that scales with
-   the question ("this is an exploratory count, allow less") is more
-   clever and much harder to justify. Simple is probably right; say why.
+3. FIXED CEILING, NOT PER-QUESTION: settings.max_bytes_billed is one
+   number for every question. A ceiling that flexes per-question
+   ("this is just an exploratory count, allow less") requires classifying
+   question intent first, which is itself an unreliable, unauditable
+   judgment call -- exactly the kind of thing this project's whole thesis
+   argues against (a guardrail you can't explain isn't a guardrail).
+   A fixed ceiling is one line in config.py, and defending it in an
+   interview is one sentence: "every query gets the same budget, and here
+   is the query we measured that budget against."
 
-4. WHETHER A BLOCKED QUERY IS RETRYABLE.
-   If a query is too expensive, telling the model "add a date filter and
-   try again" often works on sharded tables. That turns the cost guard
-   from a wall into a negotiation -- which is better UX and more retry
-   budget spent. Your call, and it interacts with the 2-retry cap.
+4. BLOCKED QUERIES ARE RETRYABLE: CostVerdict.retryable is True whenever
+   the rejection reason is the byte ceiling (as opposed to a raised
+   exception, which is a different failure class entirely -- see #2).
+   The verdict also carries a canned retry_hint suggesting a narrowing
+   filter, e.g. adding a `_TABLE_SUFFIX` bound on wildcard tables. This
+   turns the cost guard into a negotiation rather than a wall: on a
+   sharded table, "no date filter" is very often mechanically fixable,
+   and spending one of the 2 retries on that fix is worth it. graph.py
+   still owns the actual retry-count bookkeeping and the 2-retry cap;
+   this module only flags that the rejection is the retryable kind.
 
 --------------------------------------------------------------------------
-SHAPE TO RETURN
+SHAPE RETURNED
 --------------------------------------------------------------------------
-Feed GuardrailReport.estimated_bytes_scanned in src/models.py, which is
-already surfaced by the API. Include the estimate on the ALLOW path too,
-not just on rejection -- "this query was checked and cost 361 KB" is the
-line that makes the demo land.
+CostVerdict, defined below, carries estimated_bytes_scanned on BOTH the
+allow and reject paths -- "this query was checked and cost 361 KB" is the
+line that makes the demo land, per the docstring. graph.py (or api.py)
+is expected to copy verdict.estimated_bytes_scanned into
+GuardrailReport.estimated_bytes_scanned; see merge_into_report() below for
+a small helper that does exactly that without cost_guard.py needing to
+import GuardrailReport's construction logic.
 
 --------------------------------------------------------------------------
 NOTE ON DEFENCE IN DEPTH
 --------------------------------------------------------------------------
-bq_client.execute() also sets maximum_bytes_billed on the job itself, so
-a query that somehow bypasses this module still cannot run away. That is
-deliberate belt-and-braces, not redundancy to remove -- this module is the
-policy, the job setting is the backstop.
+bq_client.execute() also sets maximum_bytes_billed on the job itself, so a
+query that somehow bypasses this module (a direct call to execute(),
+a future code path that forgets to call check_cost) still cannot run
+away. That is deliberate belt-and-braces, not redundancy to remove.
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 
-def check_cost(sql: str):
-    """See module docstring. OWNER: Ajinkya."""
-    raise NotImplementedError("src/cost_guard.py is written by Ajinkya, not the assistant")
+from src.bq_client import dry_run
+from src.config import get_settings
+
+
+@dataclass
+class CostVerdict:
+    """What the cost guard decided, and the number the decision was based
+    on. `passed=False` never means "invalid SQL" -- that case raises
+    instead of returning a verdict; see decision #2 above."""
+
+    passed: bool
+    estimated_bytes_scanned: int
+    ceiling_bytes: int
+    retryable: bool = False
+    retry_hint: str | None = None
+    violations: list[str] = field(default_factory=list)
+    checks_run: list[str] = field(default_factory=lambda: ["cost_ceiling"])
+
+
+_RETRY_HINT = (
+    "Query would scan more than the allowed byte ceiling. If this targets "
+    "a date-sharded table (e.g. ga_sessions_*), add a _TABLE_SUFFIX (or "
+    "equivalent date) filter to narrow the scan and try again."
+)
+
+
+def check_cost(sql: str, client: object | None = None) -> CostVerdict:
+    """See module docstring. OWNER: Ajinkya.
+
+    Raises whatever src.bq_client.dry_run raises on invalid SQL -- this
+    function does not catch or translate BigQuery errors. Callers (i.e.
+    graph.py) are expected to catch that separately from a returned
+    CostVerdict with passed=False.
+    """
+    if sql is None:
+        raise TypeError("check_cost() requires a sql string, got None")
+
+    settings = get_settings()
+    ceiling = settings.max_bytes_billed
+
+    # Deliberately not try/except: a BigQuery error here means invalid
+    # SQL, not "too expensive," and must propagate to the caller as an
+    # exception rather than becoming a CostVerdict. See decision #2.
+    estimated_bytes = dry_run(sql, client)
+
+    if estimated_bytes > ceiling:
+        return CostVerdict(
+            passed=False,
+            estimated_bytes_scanned=estimated_bytes,
+            ceiling_bytes=ceiling,
+            retryable=True,
+            retry_hint=_RETRY_HINT,
+            violations=[
+                f"Query would scan {estimated_bytes:,} bytes, exceeding the "
+                f"{ceiling:,}-byte ceiling."
+            ],
+        )
+
+    return CostVerdict(
+        passed=True,
+        estimated_bytes_scanned=estimated_bytes,
+        ceiling_bytes=ceiling,
+        retryable=False,
+        retry_hint=None,
+        violations=[],
+    )
+
+
+def merge_into_report(report: "GuardrailReport", verdict: CostVerdict) -> "GuardrailReport":  # noqa: F821
+    """Convenience helper: fold a CostVerdict into an existing
+    GuardrailReport (the shape src/models.py already defines and api.py
+    already surfaces), so callers don't have to hand-assemble the merge
+    at every call site.
+
+    Does not mutate `report` -- GuardrailReport instances are expected to
+    be treated as values, consistent with how guardrails.check() builds
+    them.
+    """
+    from dataclasses import replace
+
+    return replace(
+        report,
+        passed=report.passed and verdict.passed,
+        checks_run=[*report.checks_run, *verdict.checks_run],
+        violations=[*report.violations, *verdict.violations],
+        estimated_bytes_scanned=verdict.estimated_bytes_scanned,
+    )
