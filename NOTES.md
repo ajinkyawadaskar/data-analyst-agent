@@ -60,3 +60,21 @@ tables do.
 Accepted cost: two datasets in the same broad domain make a blocked
 cross-domain join less dramatic than retail-vs-banking would have been.
 Profile fit judged worth more than demo drama.
+
+## 1:30 — Surprise: "table_summary" compaction deletes GA entirely
+First run of the compaction mechanisms against fixtures. `table_summary`
+keeps ids, dates, and non-nested scalars -- which on a flat relational
+table like thelook.order_items is exactly right, and on GA drops all ten
+nested columns. Every question GA exists to answer (pageviews, revenue,
+traffic source) lives under a dotted path.
+
+So a compaction rule that is obviously correct for flat tables silently
+makes the nested dataset useless. Not a bug in the code -- a bug in the
+rule. This is the concrete reason the compaction strategy has to be a
+deliberate decision rather than a default, and it is the example to use
+when explaining that decision.
+
+Also added `dropped_columns` to SchemaContext: when guardrails rejects a
+column, we need to distinguish "model hallucinated it" from "we never
+showed it to the model." Without that, a retrieval failure looks exactly
+like a model failure.
