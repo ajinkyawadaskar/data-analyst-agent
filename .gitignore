@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.py[cod]
+.env
+.DS_Store
+.deepeval*
+*.egg-info/
+.pytest_cache/
+service-account*.json
+application_default_credentials.json
