@@ -39,6 +39,7 @@ class EvalCase(BaseModel):
 
     # adversarial cases: which guardrail we expect to stop this, and why.
     expected_block: str | None = None
+    adversarial_sql: str | None = None
     rationale: str | None = None
 
     tags: list[str] = Field(default_factory=list)

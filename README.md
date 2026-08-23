@@ -111,24 +111,46 @@ query. Bytes is the right signal.
 
 ### Accuracy
 
-Execution accuracy across `___` questions: `___`
-Adversarial prompts blocked: `___` / 5
-Average retries per question: `___`
+Execution accuracy across 25 questions: **5/25 (20%)**
+Adversarial prompts blocked: **5/5 (100%)**
+Average retries per question: **0.96**
 
 Scored by comparing result sets, not SQL strings — two different queries can
 both be right, and a string comparison would fail the correct one.
 
-*(Placeholders until the eval run happens. Nothing here is estimated.)*
+The 20% accuracy reflects Gemini 3.1 Flash Lite on the free tier — a
+lightweight model that struggles with complex joins and GA's nested schema.
+The number that matters for this project is the second one: every adversarial
+prompt was caught, and nothing dangerous reached BigQuery.
 
 ## Choices I made
 
-**Execution accuracy, not SQL string match.** `___`
+**Execution accuracy, not SQL string match.** Two different queries can
+return the same correct answer — `SUM(sale_price) / COUNT(DISTINCT order_id)`
+and `AVG(order_total)` both compute AOV. A string comparison fails the
+correct one. So the eval runs both queries against BigQuery and compares the
+result sets: same rows, same values (within float tolerance), column names
+ignored, order only enforced when the ground truth has an ORDER BY.
 
-**Retries capped at 2.** `___`
+**Retries capped at 2.** The first retry usually fixes a syntax error or a
+wrong column name — the model gets the error message and corrects it. The
+second retry occasionally recovers from a table-structure misunderstanding.
+A third almost never helps — by that point the model is stuck on a
+fundamental schema misread, and more attempts just burn quota on the same
+wrong approach.
 
-**AST parsing instead of a prompt instruction or a regex.** `___`
+**AST parsing instead of a prompt instruction or a regex.** A prompt
+instruction ("never write DELETE") reduces the rate of bad SQL. It doesn't
+bound it. A regex can be fooled by comments, string literals, or CTEs. An
+AST parse with sqlglot sees the actual statement type regardless of how
+it's formatted — `DELETE` buried inside a CTE gets caught because the
+parser sees a Delete node, not because a pattern matched a string.
 
-**How the schema context gets compacted.** `___`
+**Schema context sent in full.** After collapsing GA's 366 identical daily
+shards to one wildcard entry, the entire corpus fits in 3,921 tokens. At
+that size, compaction would throw away information for no benefit — the
+model sees every table and column, so it can't hallucinate a table that
+doesn't exist without the column-validation guardrail catching it.
 
 ## Things that broke
 
@@ -158,7 +180,14 @@ The bug was a one-liner. The lesson wasn't. A guardrail that skips when it's
 confused is worse than one that doesn't exist, because it reports success. Any
 check that can't complete has to fail closed.
 
-### `___`
+### Gemini's response format changed between versions
+
+`response.content` returns a string on older Gemini models. On Gemini 3.x it
+returns a list of content parts. The LangGraph nodes called `.strip()` on it
+and got `AttributeError: 'list' object has no attribute 'strip'`. The fix
+was switching to `response.text`, which is a property that extracts the text
+regardless of version — but the error only appeared at runtime, not during
+import or type checking.
 
 ## Try it
 
@@ -201,5 +230,5 @@ files, and I wanted to be the one who made them.
 
 ## Stack
 
-Python 3.11, BigQuery, sqlglot, LangGraph, Gemini 3.6 Flash, FastAPI, DeepEval,
-Streamlit, Railway.
+Python 3.11, BigQuery, sqlglot, LangGraph, Gemini 3.1 Flash Lite, FastAPI,
+DeepEval, Streamlit, Railway.
