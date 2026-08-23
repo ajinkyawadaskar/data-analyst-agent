@@ -233,3 +233,61 @@ The 30s in Streamlit was introspection plus Streamlit's own boot; the
 introspection half is now effectively free. Cache is gitignored -- it is
 regenerable, and pinning a stale schema in git would be worse than the
 30 seconds.
+
+## 5:20 — The quota wall hit, exactly as predicted, and worse than estimated
+Flagged this at 3:30 from P1's experience. Confirmed at 5:20:
+
+    429 RESOURCE_EXHAUSTED
+    quotaId: GenerateRequestsPerDayPerProjectPerModel-FreeTier
+    quotaValue: 20
+    model: gemini-3.6-flash
+
+The limit is 20 requests PER DAY, PER MODEL -- not per minute, which is
+what I had assumed when I sketched the "run evals in batches across
+quota windows" option. That option was never viable; a daily cap cannot
+be batched around inside one working day.
+
+Worth recording that predicting the failure did not prevent it. I flagged
+it two hours early, listed four options, and then we spent the quota on
+debugging anyway -- because each individual call looked cheap. The
+resource that ran out was one nobody was counting per-call.
+
+Mitigation taken: switched to gemini-3.1-flash-lite. Quota is scoped per
+model, so a different model has its own allowance. Verified with a live
+call. This is a workaround, not a fix -- if flash-lite is also 20/day,
+a 30-case eval run still does not fit and billing is the only real answer.
+
+## 5:25 — Gemini 3.6/3.1 return content as a LIST, not a string
+graph.py assumed response.content was a str and called .strip() on it:
+
+    AttributeError: 'list' object has no attribute 'strip'
+
+Actual shape, dumped from a live call:
+
+    [{'type': 'text', 'text': 'OK', 'extras': {'signature': '...'}}]
+
+A list of typed blocks, each with a cryptographic signature. Fix is to
+use `response.text` (a property; calling it as .text() is deprecated),
+which flattens blocks and keeps working if new block types appear.
+
+This is the kind of breakage that only shows up against the real API.
+Every local test passed because none of them called a model.
+
+## 5:25 — temperature is silently ignored on these models
+    UserWarning: Model 'gemini-3.6-flash' uses fixed sampling defaults;
+    the sampling parameter(s) temperature will be ignored.
+
+So `temperature=0` in the graph does nothing, and runs are NOT
+deterministic. P1 hit the identical warning on the same model family.
+Consequence for the evals: two runs of the same question can produce
+different SQL, so a single run is a sample, not a measurement. Any
+accuracy number we publish should say how many runs it came from.
+
+## 5:25 — Automatic function calling may be multiplying request count
+    "Direct use of automatic function calling (AFC) in
+     Models.generate_content is not recommended."
+
+If the graph binds tools, AFC can issue several requests per logical
+turn. That would explain how 20 requests disappeared during what felt
+like three or four attempts, and it changes the eval quota arithmetic by
+a factor of 2-3. Needs checking before the real run.
