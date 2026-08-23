@@ -1,6 +1,6 @@
-# Runtime only. Dev/eval extras live in requirements-dev.txt so the
-# deployed image does not build deepeval (heavy) or streamlit.
+# Runtime only. Dev/eval extras live in requirements-dev.txt.
 google-cloud-bigquery>=3.25
+streamlit>=1.38
 sqlglot>=25.0
 langgraph>=0.2
 langchain-google-genai==4.3.5
