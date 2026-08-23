@@ -5,7 +5,7 @@ front that decides whether the generated SQL is allowed to run at all.
 
 ![Demo](docs/demo.gif)
 
-Live: `___` | [How it's wired](docs/architecture.md) | [Things that broke](#things-that-broke)
+Live: `https://data-analyst-agent-production-316b.up.railway.app` | [How it's wired](docs/architecture.md) | [Things that broke](#things-that-broke)
 
 ---
 
@@ -192,7 +192,7 @@ import or type checking.
 ## Try it
 
 ```bash
-curl -X POST https://___/ask \
+curl -X POST https://data-analyst-agent-production-316b.up.railway.app/ask \
   -H 'content-type: application/json' \
   -d '{"question": "which traffic sources drove the most sessions in August 2016?"}'
 ```
@@ -200,7 +200,7 @@ curl -X POST https://___/ask \
 Health check:
 
 ```bash
-curl https://___/health
+curl https://data-analyst-agent-production-316b.up.railway.app/health
 ```
 
 ### Running it locally
