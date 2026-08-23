@@ -15,7 +15,7 @@ import streamlit as st
 
 os.environ.setdefault("GOOGLE_APPLICATION_CREDENTIALS", "service-account.json")
 
-st.set_page_config(page_title="Data Analyst Agent", page_icon="🛡️", layout="wide")
+st.set_page_config(page_title="Guardrailed Natural Language to SQL Agent", page_icon="🛡️", layout="wide")
 
 
 @st.cache_resource(show_spinner="Loading schema...")
@@ -35,7 +35,7 @@ def load_graph():
         return None
 
 
-st.title("Data Analyst Agent")
+st.title("Guardrailed Natural Language to SQL Agent")
 st.caption(
     "Plain-English questions to BigQuery SQL — with a layer in front that "
     "decides whether the generated query is allowed to run."

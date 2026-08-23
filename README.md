@@ -1,4 +1,4 @@
-# Data Analyst Agent
+# Guardrailed Natural Language to SQL Agent
 
 Ask a question in plain English, get an answer from BigQuery — with a layer in
 front that decides whether the generated SQL is allowed to run at all.
