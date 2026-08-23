@@ -13,22 +13,26 @@ ASSUMED COLLABORATOR SHAPES (src/config.py, schema_context)
 --------------------------------------------------------------------------
 This file only has the docstring-level contract for its neighbors, not
 their source, so the following duck-typed shapes are assumed. If the real
-objects differ, only the small accessor helpers below (_settings_*,
-_schema_*) need to change.
+objects differ, only the small accessor helper below (_schema_columns_for)
+needs to change.
 
     settings.allowed_datasets  -> iterable[str] of "project.dataset"
     settings.max_rows          -> int
 
-    schema_context exposes the in-scope tables and their columns. Any of
-    the following are accepted (first one found wins), tried in order:
+    schema_context exposes the in-scope tables and their columns. Tried in
+    this order, first one found wins:
+      - schema_context.columns_for(table: str) -> Iterable[str] | None
+            The real SchemaContext (src/schema.py) exposes exactly this
+            method, so it's tried first. GA-style nested fields are
+            expected to already appear as dotted strings in the returned
+            iterable, e.g. "totals.pageviews", matching the note above
+            that nested paths arrive pre-dotted.
       - schema_context.tables: dict[str, Iterable[str]]
             keyed by "project.dataset.table" (preferred) or bare table
-            name, value = column names for that table. GA-style nested
-            fields are expected to already appear as dotted strings in
-            this iterable, e.g. "totals.pageviews", matching the note in
-            the module docstring that nested paths arrive pre-dotted.
-      - schema_context.get_columns(table: str) -> Iterable[str]
+            name, for schema_context stand-ins that don't implement
+            columns_for() (e.g. lightweight test doubles).
       - schema_context.columns: same shape as .tables
+      - schema_context.get_columns(table: str) -> Iterable[str]
 
 --------------------------------------------------------------------------
 DECISIONS MADE (the four the docstring asks to be explicit about)
@@ -260,7 +264,22 @@ def _schema_columns_for(schema_context: object, table_key: str) -> set[str] | No
     """Best-effort lookup of a table's known column names from
     schema_context, trying the shapes documented at the top of this file.
     Returns None if the table isn't known to schema_context at all
-    (distinct from an empty-but-known column set)."""
+    (distinct from an empty-but-known column set).
+
+    NOTE: this replaces two previously-tangled implementations of this
+    function that had been pasted on top of each other (a `columns_for`
+    call left dangling mid-expression, followed by a second, unreachable
+    duck-typed version) -- that was the syntax error breaking test
+    collection. There is exactly one implementation now.
+    """
+    if hasattr(schema_context, "columns_for"):
+        cols = schema_context.columns_for(table_key)
+        if cols:
+            return {c.lower() for c in cols}
+        # Falls through to the duck-typed lookups below only if
+        # columns_for() returned falsy (None/empty) for this exact key --
+        # give the bare-name fallback a chance before giving up.
+
     table_map: dict | None = None
     if hasattr(schema_context, "tables"):
         table_map = getattr(schema_context, "tables")

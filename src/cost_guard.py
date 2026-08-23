@@ -164,12 +164,10 @@ def merge_into_report(report: "GuardrailReport", verdict: CostVerdict) -> "Guard
     be treated as values, consistent with how guardrails.check() builds
     them.
     """
-    from dataclasses import replace
 
-    return replace(
-        report,
-        passed=report.passed and verdict.passed,
-        checks_run=[*report.checks_run, *verdict.checks_run],
-        violations=[*report.violations, *verdict.violations],
-        estimated_bytes_scanned=verdict.estimated_bytes_scanned,
-    )
+    return report.model_copy(update={
+        "passed": report.passed and verdict.passed,
+        "checks_run": [*report.checks_run, *verdict.checks_run],
+        "violations": [*report.violations, *verdict.violations],
+        "estimated_bytes_scanned": verdict.estimated_bytes_scanned,
+    })

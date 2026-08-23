@@ -202,7 +202,7 @@ def _make_generate_sql(llm, schema_context: SchemaContext):
             )
 
         response = llm.invoke(messages)
-        sql = _strip_sql_fences(response.content)
+        sql = _strip_sql_fences(response.text)
 
         return {
             **state,
@@ -368,7 +368,7 @@ def _make_explain(llm):
             ),
         ]
         response = llm.invoke(messages)
-        return {**state, "explanation": response.content.strip()}
+        return {**state, "explanation": response.text.strip()}
 
     return explain
 
