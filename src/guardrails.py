@@ -335,14 +335,20 @@ def _check_columns(
         # Either no tables resolved columns, or the query references no
         # tables at all (e.g. SELECT 1) -- nothing to check.
         return
-
+    # Collect aliases defined in the SELECT clause — these are not real
+    # columns and must not be validated against the schema.
+    select_aliases = set()
+    for sel in tree.find_all(exp.Alias):
+        if sel.alias:
+            select_aliases.add(sel.alias.lower())
+          
     seen: set[str] = set()
     for col in tree.find_all(exp.Column):
         parts = _column_parts(col)
         if not parts:
             continue
         ref = ".".join(p.lower() for p in parts)
-        if ref in seen:
+        if ref in select_aliases:
             continue
         seen.add(ref)
 
