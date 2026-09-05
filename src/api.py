@@ -92,7 +92,13 @@ def ask(req: AskRequest) -> AskResponse:
             detail="Agent graph not available (see /health for which component).",
         )
 
-    state = graph.invoke({"question": req.question})
+    initial_state = {"question": req.question}
+    if req.on_behalf_of is not None:
+        # Ignored entirely by the legacy graph (AgentState has no "principal"
+        # key, and every legacy node only reads keys it knows about) -- this
+        # is a no-op unless USE_SEMANTIC_GATEWAY is also on.
+        initial_state["principal"] = req.on_behalf_of.model_dump()
+    state = graph.invoke(initial_state)
     return AskResponse(
         question=req.question,
         sql=state.get("sql"),

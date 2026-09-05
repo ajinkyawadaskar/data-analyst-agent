@@ -167,9 +167,18 @@ class CompiledQuery:
 # ---------------------------------------------------------------------------
 
 
-def _qualified_column(entity: str, column: str) -> exp.Column:
-    """`entity.column`, built with the sqlglot expression API (never a string)."""
-    return exp.column(column, table=entity)
+def _qualified_column(entity: str, column: str, dialect: str = "bigquery") -> exp.Column:
+    """`entity.column`, built with the sqlglot expression API (never a string).
+
+    Uses exp.to_column() rather than exp.column(column, table=entity): the
+    latter treats the whole `column` string as ONE identifier, so a GA nested
+    path like "trafficSource.source" round-trips as the backtick-quoted
+    literal name `` `trafficSource.source` `` -- a column that does not
+    exist. to_column() parses the dotted string into proper table/db-qualified
+    parts, so a nested STRUCT field renders as unquoted
+    ga_sessions.trafficSource.source, which is what BigQuery actually expects.
+    """
+    return exp.to_column(f"{entity}.{column}", dialect=dialect)
 
 
 def _dimension_projection(dim: Any, dialect: str) -> exp.Expression:
@@ -185,7 +194,7 @@ def _dimension_projection(dim: Any, dialect: str) -> exp.Expression:
     raw_expression = getattr(dim, "expression", None)
     if raw_expression:
         return exp.maybe_parse(raw_expression, dialect=dialect)
-    return _qualified_column(dim.entity, dim.column)
+    return _qualified_column(dim.entity, dim.column, dialect=dialect)
 
 
 def _binary_condition(left: exp.Expression, operator: str, value: Any) -> exp.Expression:
@@ -360,7 +369,7 @@ def compile(  # noqa: A001 - mirrors the domain verb, not the builtin
 
     # intent.filters, resolved against their dimensions from step 2
     for f, fdim in zip(intent.filters, filter_dims):
-        column = _qualified_column(fdim.entity, fdim.column)
+        column = _qualified_column(fdim.entity, fdim.column, dialect=model.dialect)
         where_conditions.append(_binary_condition(column, _filter_operator(f), f.value))
 
     # measure.filters -- declarative predicates baked into the measure itself
@@ -399,7 +408,11 @@ def compile(  # noqa: A001 - mirrors the domain verb, not the builtin
             _binary_condition(count_star, getattr(having, "operator", "="), having.value)
         )
 
-    for order_entry in getattr(intent, "order_by", None) or []:
+    order_entry = getattr(intent, "order_by", None)
+    if order_entry is not None:
+        # Intent.order_by is a single OrderBy, not a list -- a `for` here
+        # would iterate the model's own (field_name, value) pairs instead of
+        # raising, since pydantic BaseModel instances are iterable.
         field_name = order_entry.field
         column_name = measure.name if field_name == "measure" else field_name
         order_column = exp.column(column_name)

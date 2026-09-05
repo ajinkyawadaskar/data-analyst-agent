@@ -9,10 +9,35 @@ from __future__ import annotations
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class OnBehalfOf(BaseModel):
+    """A SIMULATED identity for the semantic gateway's row-level security layer.
+
+    This project has no real users, tenants, or auth system -- there is
+    nothing behind these fields but what the caller types into the request.
+    It exists to demonstrate compile-time security injection (Layer 2:
+    src/compiler/security.py) against something request-shaped, not to claim
+    real multi-tenancy. Say so in any write-up or demo of this field.
+
+    `region` matches semantic_model.yaml's row_policies `principal_field`
+    (e.g. the `users` and `ga_sessions` policies both key off `region`), so
+    the compiler can look up which policy applies without a separate mapping
+    table living in this file.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    tenant_id: str = Field(min_length=1, max_length=100)
+    region: str = Field(min_length=1, max_length=100)
+
+
 class AskRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     question: str = Field(min_length=3, max_length=1000)
+    # None means "no identity simulated" -- the query compiles with no
+    # row-level restriction, same as every request before Layer 2 existed.
+    # Only meaningful on the semantic gateway path; the legacy path ignores it.
+    on_behalf_of: OnBehalfOf | None = None
 
 
 class GuardrailReport(BaseModel):

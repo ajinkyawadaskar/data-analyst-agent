@@ -54,6 +54,7 @@ from src.compiler.intent_compiler import (
     UnsupportedIntent,
     compile as compile_intent,
 )
+from src.compiler.security import SecurityContextError, inject_security_context
 from src.config import get_settings
 from src.graph import (
     AgentState,
@@ -86,6 +87,10 @@ class SemanticAgentState(AgentState, total=False):
     have meant editing the module we are deliberately not touching.
     """
 
+    # Simulated identity (see src/models.py::OnBehalfOf). None means no
+    # identity was supplied and no row-level restriction applies -- Layer 2
+    # is opt-in per request, not a mode switch on the whole gateway.
+    principal: dict | None
     intent: dict | None
     intent_raw: str | None
     route_taken: str
@@ -112,7 +117,12 @@ def _make_extract_intent(llm, model: semantic_model.SemanticModel):
 
     def extract_intent(state: SemanticAgentState) -> SemanticAgentState:
         prompt = build_prompt(state["question"], model)
-        messages = [("system", prompt)]
+        # The question is already embedded in `prompt`, but the Gemini API
+        # requires at least one non-system turn in `contents` -- a
+        # system-only message list is rejected outright ("contents are
+        # required") before the model ever sees the question. Mirrors
+        # graph.py's generate_sql, which sends the same system/human split.
+        messages = [("system", prompt), ("human", state["question"])]
         feedback = state.get("retry_feedback")
         if feedback:
             messages.append(
@@ -197,6 +207,34 @@ def _make_compile(model: semantic_model.SemanticModel, settings: object):
                 "outcome": "give_up",
             }
 
+        expression = out.expression
+        principal = state.get("principal")
+        if principal is not None:
+            # Opt-in: a request with no on_behalf_of compiles exactly as it
+            # did before Layer 2 existed. See src/compiler/security.py's
+            # module docstring for the full contract.
+            try:
+                expression = inject_security_context(
+                    expression, principal.get("tenant_id"), principal.get("region"), model
+                )
+            except NotImplementedError:
+                log.error("security.inject_security_context() is still a stub")
+                return {
+                    **state,
+                    "compile_error": "security layer not implemented",
+                    "outcome": "give_up",
+                }
+            except SecurityContextError as exc:
+                # Denied, not emptied -- see security.py step 4. Not
+                # retryable: re-asking the model cannot change who is asking.
+                log.info("access denied by row policy: %s", exc)
+                return {
+                    **state,
+                    "compile_error": f"access denied: {exc}",
+                    "outcome": "give_up",
+                }
+            out.sql = expression.sql(dialect=model.dialect, pretty=True)
+
         return {
             **state,
             "sql": out.sql,
@@ -258,11 +296,19 @@ def _halt(state: SemanticAgentState) -> SemanticAgentState:
     """
     if state.get("compile_error"):
         reason = f"compilation refused: {state['compile_error']}"
+    elif state.get("bq_error"):
+        # Checked before the compiled-route guardrails branch below: a live
+        # BigQuery dry-run exception is merged into the same `guardrails`
+        # report shape (via cost_guard's caught-exception path in graph.py's
+        # guard node) with an EMPTY violations list, since nothing in
+        # guardrails.py itself rejected the SQL. Checking route+guardrails
+        # first would misreport a genuine BigQuery-side rejection (e.g. a
+        # malformed nested-field reference) as "compiled SQL failed
+        # guardrails: []" -- true about the empty list, false about the cause.
+        reason = f"BigQuery rejected the query: {state['bq_error']}"
     elif state.get("route_taken") == ROUTE_COMPILED and state.get("guardrails"):
         violations = getattr(state["guardrails"], "violations", None)
         reason = f"compiler defect -- compiled SQL failed guardrails: {violations}"
-    elif state.get("bq_error"):
-        reason = f"BigQuery rejected the query: {state['bq_error']}"
     elif state.get("guardrails") is not None:
         reason = f"guardrails blocked the query: " \
                  f"{getattr(state['guardrails'], 'violations', None)}"
