@@ -17,3 +17,6 @@ CLAUDE.md
 
 # regenerable introspection cache
 schema_cache.json
+
+# personal study notes, not part of the public repo
+LEARNING.md
