@@ -44,3 +44,6 @@ class HealthResponse(BaseModel):
     bigquery: str
     llm: str
     agent: str
+    # Which path is serving. Surfaced so a deployed instance can be asked
+    # what it is running rather than inferred from the dashboard.
+    path: str = "legacy"

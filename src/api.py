@@ -6,7 +6,9 @@ API boots and reports honest health even before the graph exists.
 
 from __future__ import annotations
 
+import importlib
 import logging
+from functools import lru_cache
 
 from fastapi import FastAPI, HTTPException
 
@@ -22,15 +24,27 @@ app = FastAPI(
 )
 
 
-def _load_graph():
+@lru_cache(maxsize=2)
+def _load_graph(use_gateway: bool = False):
     """Import and build the compiled agent graph, or None if not usable.
 
     Returns None for both "module absent" and "module is still a stub"
     (NotImplementedError). Health must never raise -- a 500 on /health
     during a deploy tells you nothing about what is actually wrong.
+
+    MEMOIZED. This used to rebuild on every single request, and build_graph()
+    introspects BigQuery (~10 API calls, ~30s), so every question re-read the
+    whole schema first. graph.py's docstring claimed the build happened once;
+    nothing enforced that, and it did not. Keyed on the flag so both paths can
+    be cached independently when the eval harness runs them back to back.
+
+    `use_gateway` is a parameter rather than a setting read inside this
+    function on purpose: get_settings() is lru_cached, so reading it in here
+    would latch the first value forever and make the flag look broken.
     """
+    module = "src.graph_semantic" if use_gateway else "src.graph"
     try:
-        from src.graph import build_graph  # owner: Ajinkya
+        build_graph = importlib.import_module(module).build_graph
     except ImportError:
         return None
     try:
@@ -38,7 +52,7 @@ def _load_graph():
     except NotImplementedError:
         return None
     except Exception:  # noqa: BLE001
-        log.exception("graph failed to build")
+        log.exception("graph failed to build (%s)", module)
         return None
 
 
@@ -59,19 +73,23 @@ def health() -> HealthResponse:
             bq = f"error: {type(exc).__name__}"
 
     llm = "ok" if settings.google_api_key else "unconfigured"
-    agent = "ok" if _load_graph() is not None else "not_implemented"
+    gateway = bool(settings.use_semantic_gateway)
+    agent = "ok" if _load_graph(gateway) is not None else "not_implemented"
 
     status = "ok" if bq == "ok" and llm == "ok" and agent == "ok" else "degraded"
-    return HealthResponse(status=status, bigquery=bq, llm=llm, agent=agent)
+    return HealthResponse(
+        status=status, bigquery=bq, llm=llm, agent=agent,
+        path="semantic_gateway" if gateway else "legacy",
+    )
 
 
 @app.post("/ask", response_model=AskResponse)
 def ask(req: AskRequest) -> AskResponse:
-    graph = _load_graph()
+    graph = _load_graph(bool(get_settings().use_semantic_gateway))
     if graph is None:
         raise HTTPException(
             status_code=503,
-            detail="Agent graph not implemented yet (src/graph.py).",
+            detail="Agent graph not available (see /health for which component).",
         )
 
     state = graph.invoke({"question": req.question})
