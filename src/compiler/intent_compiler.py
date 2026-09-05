@@ -1,8 +1,4 @@
-"""Deterministic Intent -> SQL compiler. THE CORE OF THE GATEWAY.
-
-Owner: Ajinkya. Scaffolding only below -- signatures, types, and the spec.
-The body of compile() is deliberately unwritten.
-
+"""
 WHY THIS MODULE EXISTS
 ----------------------
 The old path asks an LLM for SQL and then checks it. Checking bounds the damage
@@ -96,6 +92,7 @@ WHAT THIS MODULE MUST NOT DO
 
 from __future__ import annotations
 
+from collections import deque
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -164,6 +161,104 @@ class CompiledQuery:
         return [e.path for e in self.join_path]
 
 
+# ---------------------------------------------------------------------------
+# Small internal helpers. None of these are part of the public contract; they
+# exist so `compile()` reads step-by-step instead of drowning in sqlglot calls.
+# ---------------------------------------------------------------------------
+
+
+def _qualified_column(entity: str, column: str) -> exp.Column:
+    """`entity.column`, built with the sqlglot expression API (never a string)."""
+    return exp.column(column, table=entity)
+
+
+def _dimension_projection(dim: Any, dialect: str) -> exp.Expression:
+    """dim.expression if the model declares one, else the qualified raw column.
+
+    A declared `expression` (e.g. a CASE statement or a derived bucket) is
+    parsed rather than the SQL being trusted verbatim, so it still goes through
+    the AST -- it just skips the "raw column" branch below. Parsed with the
+    model's own dialect so a dialect-sensitive function (e.g. DATE_TRUNC, whose
+    argument order differs across engines) round-trips instead of getting
+    silently renormalized to a different engine's convention on render.
+    """
+    raw_expression = getattr(dim, "expression", None)
+    if raw_expression:
+        return exp.maybe_parse(raw_expression, dialect=dialect)
+    return _qualified_column(dim.entity, dim.column)
+
+
+def _binary_condition(left: exp.Expression, operator: str, value: Any) -> exp.Expression:
+    """Build `left <op> value` with sqlglot builders -- value is always a literal.
+
+    Centralizing this is what keeps every WHERE/HAVING predicate off the
+    f-string path: `value` never touches the SQL as text, it goes in through
+    `exp.convert`, which sqlglot renders as a properly-escaped/typed literal.
+    """
+    op = operator.lower().strip()
+    literal = exp.convert(value)
+
+    if op in ("=", "==", "eq"):
+        return exp.EQ(this=left, expression=literal)
+    if op in ("!=", "<>", "ne"):
+        return exp.NEQ(this=left, expression=literal)
+    if op in (">", "gt"):
+        return exp.GT(this=left, expression=literal)
+    if op in (">=", "gte"):
+        return exp.GTE(this=left, expression=literal)
+    if op in ("<", "lt"):
+        return exp.LT(this=left, expression=literal)
+    if op in ("<=", "lte"):
+        return exp.LTE(this=left, expression=literal)
+    if op == "like":
+        return exp.Like(this=left, expression=literal)
+    if op in ("in",):
+        values = value if isinstance(value, (list, tuple, set)) else [value]
+        return exp.In(this=left, expressions=[exp.convert(v) for v in values])
+    if op in ("not in", "nin"):
+        values = value if isinstance(value, (list, tuple, set)) else [value]
+        return exp.Not(this=exp.In(this=left, expressions=[exp.convert(v) for v in values]))
+
+    raise SemanticCompileError(
+        f"unsupported filter operator '{operator}'",
+        ["=", "!=", ">", ">=", "<", "<=", "like", "in", "not in"],
+    )
+
+
+def _filter_operator(f: Any) -> str:
+    """Filters may spell the comparator as `.operator` or `.op` -- accept either."""
+    return getattr(f, "operator", None) or getattr(f, "op", "=")
+
+
+def _order_is_desc(entry: Any) -> bool:
+    """Order-by entries may spell direction as `.direction` ('desc') or `.desc`."""
+    direction = getattr(entry, "direction", None)
+    if direction is not None:
+        return str(direction).lower().startswith("desc")
+    return bool(getattr(entry, "desc", False))
+
+
+def _entity_table(model: SemanticModel, entity_name: str) -> str:
+    """The physical table backing a declared entity."""
+    entity = model.entity(entity_name)
+    if entity is None:
+        # The join graph or a measure/dimension pointed at an entity the model
+        # doesn't actually declare -- that is a model bug, not a bad request.
+        raise SemanticCompileError(f"model declares no entity '{entity_name}'")
+    return entity.table
+
+
+def _entity_partition_required(model: SemanticModel, entity_name: str) -> bool:
+    entity = model.entity(entity_name)
+    partition = getattr(entity, "partition", None) if entity is not None else None
+    return bool(getattr(partition, "required", False))
+
+
+# ---------------------------------------------------------------------------
+# Public contract
+# ---------------------------------------------------------------------------
+
+
 def compile(  # noqa: A001 - mirrors the domain verb, not the builtin
     intent: Intent,
     model: SemanticModel,
@@ -189,7 +284,146 @@ def compile(  # noqa: A001 - mirrors the domain verb, not the builtin
 
     See the module docstring for the full step-by-step contract.
     """
-    raise NotImplementedError("TODO: Ajinkya writes this")
+    # --- 1. Unsupported short-circuit -------------------------------------
+    if intent.unsupported:
+        raise UnsupportedIntent(
+            getattr(intent, "unsupported_reason", None)
+            or "intent marked unsupported; route to the legacy LLM path"
+        )
+
+    if settings is None:
+        from src.config import get_settings
+
+        settings = get_settings()
+
+    # --- 2. Resolve names ---------------------------------------------------
+    measure = model.measure(intent.measure)
+    if measure is None:
+        raise SemanticCompileError(
+            f"unknown measure '{intent.measure}'", model.measure_names()
+        )
+
+    dimensions = []
+    for dim_name in intent.dimensions:
+        dim = model.dimension(dim_name)
+        if dim is None:
+            raise SemanticCompileError(
+                f"unknown dimension '{dim_name}'", model.dimension_names()
+            )
+        dimensions.append(dim)
+
+    # Filters name dimensions, not raw columns -- resolve each one the same
+    # strict way, keeping the filter surface inside the certified model.
+    filter_dims = []
+    for f in intent.filters:
+        fdim = model.dimension(f.field)
+        if fdim is None:
+            raise SemanticCompileError(
+                f"unknown filter dimension '{f.field}'", model.dimension_names()
+            )
+        filter_dims.append(fdim)
+
+    # --- 3. Determine required entities -------------------------------------
+    base_entity = measure.base_entity
+    required_entities: list[str] = [base_entity]
+    for dim in dimensions:
+        if dim.entity not in required_entities:
+            required_entities.append(dim.entity)
+    for fdim in filter_dims:
+        if fdim.entity not in required_entities:
+            required_entities.append(fdim.entity)
+
+    # --- 4. Resolve the join path -------------------------------------------
+    join_path = resolve_join_path(model, base_entity, set(required_entities))
+
+    # --- 5. Build the AST ----------------------------------------------------
+    select = exp.Select()
+
+    projections: list[exp.Expression] = []
+    for dim in dimensions:
+        projections.append(_dimension_projection(dim, model.dialect).as_(dim.name))
+    projections.append(
+        exp.maybe_parse(measure.formula, dialect=model.dialect).as_(measure.name)
+    )
+    select = select.select(*projections)
+
+    select = select.from_(exp.to_table(_entity_table(model, base_entity), alias=base_entity))
+    for edge in join_path:
+        join_table = exp.to_table(_entity_table(model, edge.right_entity), alias=edge.right_entity)
+        select = select.join(
+            join_table,
+            on=exp.condition(edge.path, dialect=model.dialect),
+            join_type="inner",
+        )
+
+    where_conditions: list[exp.Expression] = []
+
+    # intent.filters, resolved against their dimensions from step 2
+    for f, fdim in zip(intent.filters, filter_dims):
+        column = _qualified_column(fdim.entity, fdim.column)
+        where_conditions.append(_binary_condition(column, _filter_operator(f), f.value))
+
+    # measure.filters -- declarative predicates baked into the measure itself
+    # (e.g. "exclude refunded rows"). These are certified model SQL, not user
+    # input, so parsing the raw string is fine; they still never touch WHERE
+    # as concatenated text.
+    for raw_measure_filter in getattr(measure, "filters", None) or []:
+        where_conditions.append(exp.condition(raw_measure_filter, dialect=model.dialect))
+
+    # --- 6. Partition bound is mandatory where declared ---------------------
+    partition_bound_sql: str | None = None
+    entities_requiring_partition = [
+        e for e in required_entities if _entity_partition_required(model, e)
+    ]
+    if entities_requiring_partition:
+        if intent.time_range is None:
+            raise SemanticCompileError(
+                "a bounded time_range is required: "
+                f"{', '.join(sorted(entities_requiring_partition))} declare a "
+                "mandatory partition"
+            )
+        start, end = intent.time_range.start, intent.time_range.end
+        partition_bound_sql = f"_TABLE_SUFFIX BETWEEN '{start}' AND '{end}'"
+        where_conditions.append(exp.condition(partition_bound_sql, dialect=model.dialect))
+
+    for condition in where_conditions:
+        select = select.where(condition)
+
+    if dimensions:
+        select = select.group_by(*[exp.column(dim.name) for dim in dimensions])
+
+    having = getattr(intent, "having", None)
+    if having is not None:
+        count_star = exp.Count(this=exp.Star())
+        select = select.having(
+            _binary_condition(count_star, getattr(having, "operator", "="), having.value)
+        )
+
+    for order_entry in getattr(intent, "order_by", None) or []:
+        field_name = order_entry.field
+        column_name = measure.name if field_name == "measure" else field_name
+        order_column = exp.column(column_name)
+        select = select.order_by(
+            order_column.desc() if _order_is_desc(order_entry) else order_column.asc()
+        )
+
+    # --- 7. Always emit a LIMIT ---------------------------------------------
+    limit_value = intent.limit if intent.limit is not None else settings.max_rows
+    select = select.limit(limit_value)
+
+    # --- 8. Render ------------------------------------------------------------
+    rendered_sql = select.sql(dialect=model.dialect, pretty=True)
+
+    return CompiledQuery(
+        sql=rendered_sql,
+        expression=select,
+        base_entity=base_entity,
+        measure=measure.name,
+        dimensions=tuple(dim.name for dim in dimensions),
+        join_path=join_path,
+        model_version=getattr(model, "version", ""),
+        partition_bound=partition_bound_sql,
+    )
 
 
 def resolve_join_path(
@@ -215,4 +449,89 @@ def resolve_join_path(
             incomplete, and a cartesian product would answer the question with
             a number that is wrong rather than absent.
     """
-    raise NotImplementedError("TODO: Ajinkya writes this")
+    targets = set(required_entities) - {base_entity}
+    if not targets:
+        return ()
+
+    # Build an undirected adjacency list purely to find shortest paths. The
+    # actual join details (ON clause, name, relationship) are fetched from
+    # model.join_between() once we know two entities are adjacent -- that is
+    # the one function the model guarantees matches either direction.
+    neighbors: dict[str, set[str]] = {}
+    for j in model.joins:
+        a, b = j.left_entity, j.right_entity
+        neighbors.setdefault(a, set()).add(b)
+        neighbors.setdefault(b, set()).add(a)
+
+    visited = {base_entity}
+    parent: dict[str, str] = {}
+    queue: deque[str] = deque([base_entity])
+    while queue:
+        current = queue.popleft()
+        for neighbor in sorted(neighbors.get(current, ())):
+            if neighbor in visited:
+                continue
+            visited.add(neighbor)
+            parent[neighbor] = current
+            queue.append(neighbor)
+
+    unreachable = targets - visited
+    if unreachable:
+        raise SemanticCompileError(
+            "entity(-ies) unreachable from base entity "
+            f"'{base_entity}' via the declared join graph: "
+            f"{', '.join(sorted(unreachable))}"
+        )
+
+    # Walk each target back to the base to get its edge sequence, then flatten
+    # into one ordered, de-duplicated list (BFS visits nearer entities first,
+    # so edges shared by multiple targets naturally land before their
+    # dependents).
+    edges: list[JoinEdge] = []
+    seen_pairs: set[tuple[str, str]] = set()
+
+    # Sort targets by BFS depth so shared prefixes are recorded in traversal
+    # order rather than in whatever order `required_entities` happened to be.
+    def _depth(entity: str) -> int:
+        depth = 0
+        node = entity
+        while node != base_entity:
+            node = parent[node]
+            depth += 1
+        return depth
+
+    for target in sorted(targets, key=_depth):
+        path_from_base: list[str] = []
+        node = target
+        while node != base_entity:
+            path_from_base.append(node)
+            node = parent[node]
+        path_from_base.reverse()
+
+        previous = base_entity
+        for entity in path_from_base:
+            pair = tuple(sorted((previous, entity)))
+            if pair not in seen_pairs:
+                seen_pairs.add(pair)
+                join_info = model.join_between(previous, entity)
+                if join_info is None:
+                    # The adjacency map came from model.joins, so this would
+                    # mean join_between disagrees with the declared graph --
+                    # a model bug, surfaced loudly rather than papered over.
+                    raise SemanticCompileError(
+                        f"declared join graph has an edge between '{previous}' "
+                        f"and '{entity}' but model.join_between() could not "
+                        "resolve it"
+                    )
+                edges.append(
+                    JoinEdge(
+                        name=join_info.name,
+                        relationship=join_info.relationship,
+                        path=join_info.path,
+                        left_entity=join_info.left_entity,
+                        right_entity=join_info.right_entity,
+                    )
+                )
+            previous = entity
+
+    return tuple(edges)

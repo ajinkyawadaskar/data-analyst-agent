@@ -186,13 +186,16 @@ def test_compile_refusal_does_not_retry(model, schema, monkeypatch):
     assert "unknown measure" in out["compile_error"]
 
 
-def test_stub_compiler_reports_as_not_implemented_not_broken(model, schema):
-    """While the compiler is Ajinkya's stub, the graph should say so clearly
-    rather than surfacing an opaque crash."""
-    llm = StubLLM('{"measure": "total_revenue"}')
+def test_compile_error_is_reported_not_a_crash(model, schema, monkeypatch):
+    """A compile refusal should surface as a readable compile_error, not an
+    opaque crash -- whether the compiler is still a stub or fully written."""
+    from src.compiler.intent_compiler import SemanticCompileError
+
+    llm = StubLLM('{"measure": "not_a_real_measure"}')
     out = _build(llm, model, schema).invoke({"question": "q"})
-    assert out["compile_error"] == "compiler not implemented"
     assert out["outcome"] == "give_up"
+    assert "compile_error" in out
+    assert "not_a_real_measure" in out["compile_error"]
 
 
 # ---- routing: a guardrail violation on COMPILED sql is a defect, not a retry

@@ -38,12 +38,6 @@ from src.semantic.intent import Intent
 
 SNAPSHOT = Path(__file__).parent / "schema_snapshot.json"
 
-pytestmark = pytest.mark.xfail(
-    raises=NotImplementedError,
-    reason="src/compiler/intent_compiler.py is Ajinkya's to write",
-    strict=False,
-)
-
 
 @pytest.fixture(scope="session")
 def schema() -> SchemaContext:
@@ -189,11 +183,28 @@ def test_single_entity_query_needs_no_join(model):
     assert out.join_path == ()
 
 
-def test_unreachable_entity_raises_rather_than_cross_joining(model):
+def test_unreachable_entity_raises_rather_than_cross_joining():
     """A cartesian product answers the question with a number that is wrong
-    rather than absent, which is strictly worse."""
+    rather than absent, which is strictly worse.
+
+    Uses a hand-built model with a genuinely disconnected entity rather than
+    the real semantic_model.yaml -- every entity there is reachable from every
+    other one via a chain of joins (products -> order_items -> users ->
+    events), so there is no actual unreachable pair to test against it.
+    """
+    isolated_model = M.SemanticModel(
+        version="test",
+        dialect="bigquery",
+        entities=(
+            M.Entity(name="products", table="p.d.products", primary_key="id"),
+            M.Entity(name="orphan", table="p.d.orphan", primary_key="id"),
+        ),
+        measures=(),
+        dimensions=(),
+        joins=(),
+    )
     with pytest.raises(SemanticCompileError):
-        resolve_join_path(model, "products", {"products", "events"})
+        resolve_join_path(isolated_model, "products", {"products", "orphan"})
 
 
 # ---- the mandatory GA partition bound
