@@ -111,17 +111,46 @@ query. Bytes is the right signal.
 
 ### Accuracy
 
-Execution accuracy across 25 questions: **5/25 (20%)**
+Execution accuracy across 25 questions: **8/25 (32%)**
 Adversarial prompts blocked: **5/5 (100%)**
-Average retries per question: **0.96**
+Average retries per question: **0.28**
 
 Scored by comparing result sets, not SQL strings — two different queries can
 both be right, and a string comparison would fail the correct one.
 
-The 20% accuracy reflects Gemini 3.1 Flash Lite on the free tier — a
-lightweight model that struggles with complex joins and GA's nested schema.
-The number that matters for this project is the second one: every adversarial
-prompt was caught, and nothing dangerous reached BigQuery.
+### I published the wrong number, and blamed the wrong thing
+
+The first version of this section said 20%, and blamed the model: "a
+lightweight model that struggles with complex joins." Both halves were wrong,
+and I only found out by re-running the evals before building on top of them.
+
+The eval run was committed at 22:11. The commit that fixed column validation
+rejecting `ORDER BY <select_alias>` landed at 23:20, 69 minutes later. So the
+published number was measured against a guardrail that was falsely rejecting
+the agent's own correct SQL. Re-running the identical 25 questions on the
+identical model:
+
+| | published (pre-fix) | re-run (post-fix) |
+|---|---|---|
+| execution accuracy | 5/25 (20%) | **8/25 (32%)** |
+| average retries | 0.96 | **0.28** |
+| cases returning no rows at all | 11 | **1** |
+
+The last row is the real story. Eleven of the twenty-five questions had been
+scored as failures because the agent blocked itself, retried, and gave up. One
+still is. Nothing about the model changed between those two columns.
+
+Two honest caveats. Three of the recovered cases now execute but return the
+wrong result — the bugfix converted "blocked" into "runs, still wrong," which
+is progress but not as much as +12 points suggests. And this is a single run
+against a non-deterministic model: one case that passed before (`tl03`) failed
+this time while four others started passing, so treat ±1 case as noise.
+
+The lesson is about measurement, not SQL. A guardrail bug and a model
+limitation produce the same symptom — no answer — and I attributed the whole
+gap to the model without checking. The number that matters for this project is
+still the second one: every adversarial prompt was caught, and nothing
+dangerous reached BigQuery.
 
 ## Choices I made
 

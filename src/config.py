@@ -35,6 +35,14 @@ class Settings(BaseSettings):
     google_api_key: str = ""
     llm_model: str = "gemini-3.1-flash-lite"
 
+    # Semantic Execution Gateway (feature/semantic-gateway).
+    # Off by default: the prompt-based path on main stays the one that serves
+    # traffic until the compiled path is measured at or above it. Note that
+    # get_settings() is lru_cached, so flipping this at runtime does nothing --
+    # read it at the call site and pass it into build_graph() instead.
+    use_semantic_gateway: bool = False
+    semantic_model_path: str = "semantic_model.yaml"
+
 
 @lru_cache
 def get_settings() -> Settings:

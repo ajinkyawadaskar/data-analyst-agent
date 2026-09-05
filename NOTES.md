@@ -291,3 +291,54 @@ If the graph binds tools, AFC can issue several requests per logical
 turn. That would explain how 20 requests disappeared during what felt
 like three or four attempts, and it changes the eval quota arithmetic by
 a factor of 2-3. Needs checking before the real run.
+
+## Day 1 0:30 -- Surprise: the published 20% was measured against a broken guardrail
+Re-ran the existing eval set on main before writing any gateway code, on the
+theory that you cannot claim a delta against a number you have not re-measured.
+
+    answer_accuracy   5/25 (20%)  ->  8/25 (32%)
+    avg_retries             0.96  ->  0.28
+    cases with no rows        11  ->  1
+
+Nothing about the model changed. git log explains it:
+
+    225569a  22:11  Run evals: 5/25 answer accuracy
+    b8c198f  23:20  Fix column validation rejecting SELECT aliases
+
+The eval run predates the alias bugfix by 69 minutes. The agent had been
+writing correct SQL, the column check was rejecting ORDER BY <select_alias>,
+the retry loop burned two attempts and gave up. Eleven of twenty-five.
+
+Two things I got wrong, both worth keeping:
+
+1. The README attributed the gap to "a lightweight model that struggles with
+   complex joins." A guardrail false positive and a model limitation present
+   identically -- no answer -- and I attributed the whole thing to the model
+   without checking. Same failure DIRECTION as the 3:10 entry, one level up:
+   there a lookup miss silently disabled a check, here a check's own bug
+   silently became the model's fault.
+
+2. +12 points overstates it. Of the ten cases that stopped returning nothing,
+   only three became correct; the rest now execute and return the wrong result.
+   The fix converted "blocked" into "runs, still wrong."
+
+Also: one case that passed before (tl03) failed this run while four others
+started passing. Single run, non-deterministic model, so +-1 case is noise.
+The 5:25 entry already said any published number should say how many runs it
+came from, and the published one did not. This one does.
+
+RESUME CONSEQUENCE: the gateway's accuracy delta gets measured against 32%,
+not 20%. Comparing against the stale number would have credited a compiled
+semantic layer with a bugfix that was already merged.
+
+## Day 1 0:45 -- The eval runner cannot run from a clean shell
+python -m evals.run_evals dies on DefaultCredentialsError even with
+GOOGLE_APPLICATION_CREDENTIALS set in .env. pydantic-settings populates the
+Settings object; google.auth reads os.environ directly, and nothing bridges
+the two. app.py papers over it with os.environ.setdefault at import. The
+eval runner has no equivalent, so it only ever worked in a shell that already
+had the var exported.
+
+Not fixing it in the runner today -- it is a one-line export and the real fix
+belongs in bq_client.get_client(), which is on the guardrail path I am not
+touching this build. Logged so it is not rediscovered.

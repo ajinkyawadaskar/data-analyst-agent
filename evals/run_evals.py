@@ -62,11 +62,11 @@ def _run_answer_cases(graph, metrics, cases, *, ids=None):
             retries = r.get("retries_used", 0)
             print(f"{'✓' if passed else '✗'} {c.id}: {msg[:80]}")
             results.append({"id": c.id, "passed": passed, "msg": msg, "retries": retries,
-                            "sql": r.get("sql", "")[:300]})
+                            "sql": r.get("sql", "")[:2000]})
         except Exception as e:
             print(f"✗ {c.id}: ERROR {e}")
             results.append({"id": c.id, "passed": False, "msg": str(e)[:300], "retries": -1})
-        time.sleep(1)
+        time.sleep(4)  # 15 RPM cap vs up to 4 calls/case
     return results
 
 
