@@ -23,7 +23,7 @@
     {
       "id": "tl02",
       "passed": false,
-      "msg": "no agent row matches expected row (unordered): {'aov': 86.82}",
+      "msg": "no agent row matches expected row (unordered): {'aov': 86.28}",
       "retries": 0,
       "route": "fallback",
       "halt_reason": null,
@@ -36,7 +36,7 @@
       "retries": 0,
       "route": "compiled",
       "halt_reason": null,
-      "sql": "SELECT\n  ROUND(100 * SAFE_DIVIDE(COUNTIF(status = 'Returned'), COUNT(*)), 2) AS returned_order_pct\nFROM `bigquery-public-data`.thelook_ecommerce.orders AS orders\nLIMIT 500"
+      "sql": "SELECT\n  ROUND(100 * COUNTIF(status = 'Returned') / COUNT(*), 2) AS returned_order_pct\nFROM `bigquery-public-data`.thelook_ecommerce.orders AS orders\nLIMIT 500"
     },
     {
       "id": "tl04",
@@ -50,7 +50,7 @@
     {
       "id": "tl05",
       "passed": false,
-      "msg": "row 0 does not match in the required order (expected_sql has ORDER BY): agent={'user_signup_month': '2023-03', 'user_count': 1084} expected={'month': '2023-01', 'signups': 1016}",
+      "msg": "row 1 does not match in the required order (expected_sql has ORDER BY): agent={'user_signup_month': '2023-04', 'user_count': 1062} expected={'month': '2023-02', 'signups': 966}",
       "retries": 0,
       "route": "compiled",
       "halt_reason": null,
@@ -68,7 +68,7 @@
     {
       "id": "tl07",
       "passed": false,
-      "msg": "row 0 does not match in the required order (expected_sql has ORDER BY): agent={'event_type': 'purchase', 'event_count': 179932} expected={'event_type': 'product', 'n': 841228}",
+      "msg": "row 0 does not match in the required order (expected_sql has ORDER BY): agent={'event_type': 'purchase', 'event_count': 180969} expected={'event_type': 'product', 'n': 842993}",
       "retries": 0,
       "route": "compiled",
       "halt_reason": null,
@@ -86,7 +86,7 @@
     {
       "id": "tl09",
       "passed": false,
-      "msg": "row 0 does not match in the required order (expected_sql has ORDER BY): agent={'user_gender': 'M', 'avg_customer_age': 41.01} expected={'gender': 'F', 'avg_age': 41.0}",
+      "msg": "row 1 does not match in the required order (expected_sql has ORDER BY): agent={'user_gender': 'M', 'avg_customer_age': 41.04} expected={'gender': 'M', 'avg_age': 41.0}",
       "retries": 0,
       "route": "compiled",
       "halt_reason": null,
@@ -126,7 +126,7 @@
       "retries": 0,
       "route": "compiled",
       "halt_reason": null,
-      "sql": "SELECT\n  ROUND(100 * SAFE_DIVIDE(COUNTIF(NOT totals.transactions IS NULL), COUNT(*)), 3) AS conversion_rate_pct\nFROM `bigquery-public-data`.google_analytics_sample.`ga_sessions_*` AS ga_sessions\nWHERE\n  _TABLE_SUFFIX BETWEEN '20160801' AND '20160831'\nLIMIT 500"
+      "sql": "SELECT\n  ROUND(100 * COUNTIF(NOT totals.transactions IS NULL) / COUNT(*), 3) AS conversion_rate_pct\nFROM `bigquery-public-data`.google_analytics_sample.`ga_sessions_*` AS ga_sessions\nWHERE\n  _TABLE_SUFFIX BETWEEN '20160801' AND '20160831'\nLIMIT 500"
     },
     {
       "id": "ga04",
@@ -144,7 +144,7 @@
       "retries": 0,
       "route": "compiled",
       "halt_reason": null,
-      "sql": "SELECT\n  ga_sessions.trafficSource.medium AS ga_traffic_medium,\n  ROUND(100 * SAFE_DIVIDE(COUNTIF(NOT totals.bounces IS NULL), COUNT(*)), 2) AS bounce_rate_pct\nFROM `bigquery-public-data`.google_analytics_sample.`ga_sessions_*` AS ga_sessions\nWHERE\n  _TABLE_SUFFIX BETWEEN '20160801' AND '20160831'\nGROUP BY\n  ga_traffic_medium\nORDER BY\n  bounce_rate_pct DESC\nLIMIT 1"
+      "sql": "SELECT\n  ga_sessions.trafficSource.medium AS ga_traffic_medium,\n  ROUND(100 * COUNTIF(NOT totals.bounces IS NULL) / COUNT(*), 2) AS bounce_rate_pct\nFROM `bigquery-public-data`.google_analytics_sample.`ga_sessions_*` AS ga_sessions\nWHERE\n  _TABLE_SUFFIX BETWEEN '20160801' AND '20160831'\nGROUP BY\n  ga_traffic_medium\nORDER BY\n  bounce_rate_pct DESC\nLIMIT 1"
     },
     {
       "id": "ga06",
@@ -158,7 +158,7 @@
     {
       "id": "tl11",
       "passed": false,
-      "msg": "row 0 does not match in the required order (expected_sql has ORDER BY): agent={'order_status': 'Cancelled', 'order_count': 18598} expected={'status': 'Shipped', 'order_count': 37327}",
+      "msg": "row 0 does not match in the required order (expected_sql has ORDER BY): agent={'order_status': 'Cancelled', 'order_count': 18786} expected={'status': 'Shipped', 'order_count': 37501}",
       "retries": 0,
       "route": "compiled",
       "halt_reason": null,
@@ -185,7 +185,7 @@
     {
       "id": "tl14",
       "passed": false,
-      "msg": "no agent row matches expected row (unordered): {'total_revenue': 1195415.97}",
+      "msg": "no agent row matches expected row (unordered): {'total_revenue': 1195427.78}",
       "retries": 0,
       "route": "compiled",
       "halt_reason": null,
@@ -194,7 +194,7 @@
     {
       "id": "tl15",
       "passed": false,
-      "msg": "row 2 does not match in the required order (expected_sql has ORDER BY): agent={'user_traffic_source': 'Email', 'user_count': 4890} expected={'traffic_source': 'Facebook', 'user_count': 6139}",
+      "msg": "row 1 does not match in the required order (expected_sql has ORDER BY): agent={'user_traffic_source': 'Facebook', 'user_count': 5972} expected={'traffic_source': 'Organic', 'user_count': 14726}",
       "retries": 0,
       "route": "compiled",
       "halt_reason": null,

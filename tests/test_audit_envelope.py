@@ -1,25 +1,17 @@
 """Spec for src/models.py::build_audit_envelope (owner: Ajinkya).
 
-Same discipline as elsewhere: xfail(raises=NotImplementedError) until the
-body lands. The two decisions (audit_id generation; what "not applicable
-to this route" looks like per field) are left open -- these tests check
-the structural guarantee (every field present, applicable fields never
-None) rather than one specific choice for either decision.
+The two decisions (audit_id generation; what "not applicable to this
+route" looks like per field) are documented in AuditEnvelope's own
+docstring. These tests check the structural guarantee (every field
+present, applicable fields never None) rather than re-litigating either
+decision.
 """
 
 from __future__ import annotations
 
 import time
 
-import pytest
-
 from src.models import build_audit_envelope
-
-pytestmark = pytest.mark.xfail(
-    raises=NotImplementedError,
-    reason="src/models.py::build_audit_envelope is Ajinkya's to write",
-    strict=False,
-)
 
 
 def _structured_result():

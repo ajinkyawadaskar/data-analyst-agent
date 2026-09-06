@@ -538,7 +538,7 @@ def build_graph(
             "compile": "cache_check",
             "fallback": "fallback",
             "retry": "extract_intent",
-            "give_up": END,
+            "give_up": "halt",
         },
     )
     graph.add_conditional_edges(
@@ -549,7 +549,7 @@ def build_graph(
     graph.add_conditional_edges(
         "compile",
         _route_after_compile,
-        {"guard": "guard", "fallback": "fallback", "give_up": END},
+        {"guard": "guard", "fallback": "fallback", "give_up": "halt"},
     )
     graph.add_edge("fallback", "guard")
     graph.add_conditional_edges(

@@ -149,7 +149,7 @@ measures:
       returned_at -- the two disagree slightly in this dataset; status is what the
       committed ground truth uses.
     base_entity: orders
-    formula: "ROUND(100 * COUNTIF(status = 'Returned') / COUNT(*), 2)"
+    formula: "ROUND(100 * SAFE_DIVIDE(COUNTIF(status = 'Returned'), COUNT(*)), 2)"
     eval_source: tl03
 
   - name: avg_customer_age
@@ -182,12 +182,12 @@ measures:
   - name: conversion_rate_pct
     description: Percentage of sessions containing at least one transaction.
     base_entity: ga_sessions
-    formula: "ROUND(100 * COUNTIF(totals.transactions IS NOT NULL) / COUNT(*), 3)"
+    formula: "ROUND(100 * SAFE_DIVIDE(COUNTIF(totals.transactions IS NOT NULL), COUNT(*)), 3)"
     eval_source: ga03
 
   - name: bounce_rate_pct
     base_entity: ga_sessions
-    formula: "ROUND(100 * COUNTIF(totals.bounces IS NOT NULL) / COUNT(*), 2)"
+    formula: "ROUND(100 * SAFE_DIVIDE(COUNTIF(totals.bounces IS NOT NULL), COUNT(*)), 2)"
     eval_source: ga05
 
   - name: total_transaction_revenue_usd
