@@ -23,5 +23,10 @@ data/session_store.db
 data/session_store.db-wal
 data/session_store.db-shm
 
+# Layer 5 vector index -- regenerable via `python -m tools.ingest_notes`,
+# requires a live embedding API call so it isn't offline-reproducible the
+# way data/synthetic_notes.jsonl (committed) is. Not source.
+data/lancedb/
+
 # personal study notes, not part of the public repo
 LEARNING.md

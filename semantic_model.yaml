@@ -236,6 +236,15 @@ dimensions:
     source: users.country
     eval_source: tl08
 
+  - name: user_id
+    type: integer
+    source: users.id
+    description: >
+      Certified filter dimension so a Layer 5 stacking question can scope a
+      compiled query to specific customers surfaced by note retrieval
+      (tools/retrieve_notes.py) -- e.g. "an intent filtering user_id IN
+      (...)" -- without needing a raw, uncertified column reference.
+
   - name: user_state
     type: string
     source: users.state

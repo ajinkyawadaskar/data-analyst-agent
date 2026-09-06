@@ -11,3 +11,4 @@ pydantic-settings>=2.4
 python-dotenv>=1.0
 pyyaml>=6.0
 fastmcp>=4.0
+lancedb>=0.38
