@@ -47,6 +47,7 @@ class StubSettings:
     max_retries = 2
     semantic_model_path = "semantic_model.yaml"
     llm_model = "stub"
+    cache_ttl_seconds = 300
 
 
 @pytest.fixture(scope="session")
@@ -77,10 +78,21 @@ def _no_real_settings(monkeypatch):
 
 
 def _build(llm, model, schema, **kw):
+    from src.cache.session_store import SessionStore
     from src.graph_semantic import build_graph
 
+    # A fresh, in-memory SessionStore per build -- never the real
+    # data/session_store.db. Without this, "fully offline" (per this file's
+    # own module docstring) would be untrue the moment any test's run
+    # reaches a real cache write, and repeated test runs would silently
+    # accumulate real cache entries on disk.
     return build_graph(
-        schema_context=schema, model=model, llm=llm, settings=StubSettings(), **kw
+        schema_context=schema,
+        model=model,
+        llm=llm,
+        settings=StubSettings(),
+        session_store=SessionStore(":memory:"),
+        **kw,
     )
 
 

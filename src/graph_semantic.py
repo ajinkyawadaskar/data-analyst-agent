@@ -55,6 +55,8 @@ from src.compiler.intent_compiler import (
     compile as compile_intent,
 )
 from src.compiler.security import SecurityContextError, inject_security_context
+from src.cache.intent_hash import hash_intent
+from src.cache.session_store import SessionStore
 from src.config import get_settings
 from src.graph import (
     AgentState,
@@ -94,6 +96,8 @@ class SemanticAgentState(AgentState, total=False):
     intent: dict | None
     intent_raw: str | None
     route_taken: str
+    cache_key: str | None
+    cache_hit: bool
     compiled_sql: str | None
     proven_join_path: list[str]
     base_entity: str | None
@@ -168,6 +172,50 @@ def _route_after_extract(state: SemanticAgentState) -> str:
             return "fallback"
         return "compile"
     return state.get("outcome") if state.get("outcome") == "retry" else "give_up"
+
+
+# ==========================================================================
+# Node: cache_check (Layer 4)
+# ==========================================================================
+def _make_cache_check(session_store: SessionStore):
+    """Sits between a validated, supported intent and the compiler.
+
+    A cache HIT skips compilation, security injection, the guard, and
+    BigQuery entirely -- the entire reason this exists is that all four are
+    expensive relative to a SQLite read. A MISS falls through to "compile"
+    exactly as if this node were not here; caching a query is never a
+    precondition for answering it.
+    """
+
+    def cache_check(state: SemanticAgentState) -> SemanticAgentState:
+        intent = Intent.model_validate(state["intent"])
+        key = hash_intent(intent, state.get("principal"))
+        entry = session_store.cache_get(key)
+
+        if entry is None:
+            return {**state, "cache_key": key, "cache_hit": False}
+
+        meta = entry.metadata
+        return {
+            **state,
+            "cache_key": key,
+            "cache_hit": True,
+            "sql": entry.compiled_sql,
+            "compiled_sql": entry.compiled_sql,
+            "rows": entry.rows,
+            "route_taken": meta.get("route_taken", ROUTE_COMPILED),
+            "proven_join_path": meta.get("proven_join_path", []),
+            "base_entity": meta.get("base_entity"),
+            "measure": meta.get("measure"),
+            "semantic_model_version": meta.get("semantic_model_version", ""),
+            "outcome": "success",
+        }
+
+    return cache_check
+
+
+def _route_after_cache_check(state: SemanticAgentState) -> str:
+    return "explain" if state.get("cache_hit") else "compile"
 
 
 # ==========================================================================
@@ -341,10 +389,47 @@ def _route_after_guard(state: SemanticAgentState) -> str:
 def _route_after_execute(state: SemanticAgentState) -> str:
     outcome = state.get("outcome")
     if outcome == "success":
-        return "explain"
+        return "cache_write"
     if outcome == "retry" and state.get("route_taken") != ROUTE_COMPILED:
         return "fallback"
     return "halt"
+
+
+# ==========================================================================
+# Node: cache_write (Layer 4)
+# ==========================================================================
+def _make_cache_write(session_store: SessionStore, settings: object):
+    """Writes a freshly-executed COMPILED result to the cache.
+
+    Only the compiled path is cached, not the legacy fallback -- the cache
+    key is a hash of a validated Intent, and the fallback path's SQL was
+    authored directly by the LLM against the compacted schema rather than
+    derived from one, so there is no Intent whose meaning the cached rows
+    would actually correspond to. A cache HIT never reaches this node at
+    all (see _route_after_cache_check), so there is no risk of overwriting
+    a hit with itself.
+    """
+
+    def cache_write(state: SemanticAgentState) -> SemanticAgentState:
+        if state.get("route_taken") != ROUTE_COMPILED or not state.get("cache_key"):
+            return state
+
+        session_store.cache_set(
+            state["cache_key"],
+            rows=state.get("rows") or [],
+            compiled_sql=state.get("sql") or "",
+            ttl_seconds=getattr(settings, "cache_ttl_seconds", 300),
+            metadata={
+                "route_taken": state.get("route_taken"),
+                "proven_join_path": state.get("proven_join_path", []),
+                "base_entity": state.get("base_entity"),
+                "measure": state.get("measure"),
+                "semantic_model_version": state.get("semantic_model_version", ""),
+            },
+        )
+        return state
+
+    return cache_write
 
 
 # ==========================================================================
@@ -356,6 +441,7 @@ def build_graph(
     model: semantic_model.SemanticModel | None = None,
     llm=None,
     settings: object | None = None,
+    session_store: SessionStore | None = None,
 ):
     """Build the gateway graph.
 
@@ -401,6 +487,7 @@ def build_graph(
         settings.semantic_model_path, schema_context=schema_full
     )
     llm = llm or _build_llm(settings)
+    session_store = session_store or SessionStore()
 
     # The legacy fallback gets the compacted schema, so a question routed to it
     # behaves exactly as it would on main. The guard gets the full one, so it
@@ -409,10 +496,12 @@ def build_graph(
 
     graph = StateGraph(SemanticAgentState)
     graph.add_node("extract_intent", _make_extract_intent(llm, model))
+    graph.add_node("cache_check", _make_cache_check(session_store))
     graph.add_node("compile", _make_compile(model, settings))
     graph.add_node("fallback", _make_fallback(generate_sql))
     graph.add_node("guard", _make_guard(schema_full, settings))
     graph.add_node("execute", _execute_node)
+    graph.add_node("cache_write", _make_cache_write(session_store, settings))
     graph.add_node("explain", _make_explain(llm))
     graph.add_node("halt", _halt)
 
@@ -422,11 +511,16 @@ def build_graph(
         "extract_intent",
         _route_after_extract,
         {
-            "compile": "compile",
+            "compile": "cache_check",
             "fallback": "fallback",
             "retry": "extract_intent",
             "give_up": END,
         },
+    )
+    graph.add_conditional_edges(
+        "cache_check",
+        _route_after_cache_check,
+        {"compile": "compile", "explain": "explain"},
     )
     graph.add_conditional_edges(
         "compile",
@@ -442,8 +536,9 @@ def build_graph(
     graph.add_conditional_edges(
         "execute",
         _route_after_execute,
-        {"explain": "explain", "fallback": "fallback", "halt": "halt"},
+        {"cache_write": "cache_write", "fallback": "fallback", "halt": "halt"},
     )
+    graph.add_edge("cache_write", "explain")
     graph.add_edge("explain", END)
     graph.add_edge("halt", END)
 

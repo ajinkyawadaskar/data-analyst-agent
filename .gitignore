@@ -18,5 +18,10 @@ CLAUDE.md
 # regenerable introspection cache
 schema_cache.json
 
+# Layer 4 session/cache store -- local runtime state, not source
+data/session_store.db
+data/session_store.db-wal
+data/session_store.db-shm
+
 # personal study notes, not part of the public repo
 LEARNING.md

@@ -43,6 +43,13 @@ class Settings(BaseSettings):
     use_semantic_gateway: bool = False
     semantic_model_path: str = "semantic_model.yaml"
 
+    # Layer 4 semantic cache. 5 minutes: long enough that a burst of
+    # paraphrased repeats of one question (the case this cache targets) hits
+    # every time, short enough that the public datasets' own slow drift
+    # (thelook is a live-generated sample, not a frozen snapshot) can't go
+    # stale for long without anyone asking again.
+    cache_ttl_seconds: int = 300
+
 
 @lru_cache
 def get_settings() -> Settings:
