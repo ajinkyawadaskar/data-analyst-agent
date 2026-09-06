@@ -16,12 +16,6 @@ import pytest
 
 from src.router import classify
 
-pytestmark = pytest.mark.xfail(
-    raises=NotImplementedError,
-    reason="src/router.py is Ajinkya's to write",
-    strict=False,
-)
-
 
 def test_pure_metric_question_routes_structured():
     assert classify("What is our total revenue by product category?") == "structured"

@@ -18,12 +18,6 @@ import pytest
 
 from src.synthesis import synthesize
 
-pytestmark = pytest.mark.xfail(
-    raises=NotImplementedError,
-    reason="src/synthesis.py is Ajinkya's to write",
-    strict=False,
-)
-
 
 @dataclass
 class _FakeNote:
