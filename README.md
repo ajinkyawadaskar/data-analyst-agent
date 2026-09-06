@@ -264,32 +264,113 @@ DeepEval, Streamlit, Railway.
 
 ## Semantic Execution Gateway (`feature/semantic-gateway`, complete)
 
-The agent above lets the LLM write SQL, then checks it. This branch flips
-that around: the LLM never writes SQL at all. It just picks a metric off an
-approved list — "total revenue," "conversion rate," that kind of thing — and
-separate, plain code turns that into the actual query. Ask for something not
-on the list and it's refused before it ever reaches the database, instead of
-running and quietly giving you a wrong-but-plausible number.
+The agent above works by letting the LLM write SQL and then checking it
+afterward. That catches a lot, but the model still has to correctly guess
+column names, join paths, and metric formulas from a compacted schema every
+single time — and a plausible-looking wrong query can slip through a
+guardrail that was never designed to know what "correct" means, only what's
+*safe*.
 
-On top of that, this branch adds:
+This branch removes that guesswork instead of just policing it. The LLM
+stops writing SQL entirely. It picks a metric off a small, approved list —
+"total revenue," "conversion rate," and so on — and separate, deterministic
+code turns that choice into the actual query. Ask for something that isn't
+on the list and the request is refused before it ever reaches the database,
+instead of running and quietly returning a wrong-but-plausible number.
 
-- **Access control per request.** A request can carry an identity, and the
-  query gets rewritten so that identity only ever sees data it's allowed to
-  see. That check is baked into the query itself — the LLM is never trusted
-  to enforce it.
-- **A cache.** Ask the same thing two different ways and the second one
-  comes back almost instantly, from cache, instead of hitting BigQuery again.
-- **A "find who, then look up what" pattern.** For a question like *"why are
-  our top customers complaining, and what do they pay us?"*, it first finds
-  the right customers from support notes, then runs a real number on exactly
-  those customers.
-- **Tracing.** Every step of a request — routing, security check, cache,
-  execution — is logged so it can be inspected after the fact.
+```mermaid
+flowchart TD
+    Q["User question<br/>e.g. 'Why are high-usage customers<br/>complaining about latency, and what do they pay us?'"]
+    Q --> ROUTER
 
-All of it runs against a real database and a real model, not just described
-on paper. Full write-up: [docs/semantic-gateway.md](docs/semantic-gateway.md).
+    ROUTER{"Router<br/>numeric ask, note ask, or both?"}
+    ROUTER -->|numeric| EXTRACT
+    ROUTER -->|about notes/feedback| RETRIEVE
 
-**Same questions, same model, before vs. after:**
+    subgraph STRUCT [" Structured path — the Semantic Gateway "]
+        EXTRACT["1. Intent extraction<br/>LLM outputs JSON: measure, dimensions, filters<br/>— never raw SQL"] --> CACHE
+        CACHE{"2. Cache check<br/>hash(intent + identity)"}
+        CACHE -- hit, ~1ms --> SYNTH
+        CACHE -- miss --> COMPILE
+        COMPILE["3. Compiler<br/>resolves joins from semantic_model.yaml,<br/>refuses anything off the certified list"] --> SECURITY
+        SECURITY["4. Access control<br/>rewrites the query so this identity only<br/>sees rows it's allowed to see"] --> GUARD
+        GUARD["5. Guardrails + BigQuery dry-run<br/>blocks unsafe/expensive SQL, then executes"] --> SYNTH
+    end
+
+    subgraph UNSTRUCT [" Unstructured path — retrieval "]
+        RETRIEVE["Vector search over synthetic<br/>support notes (LanceDB)"] --> NOTES["Matching notes +<br/>the customer IDs they mention"]
+    end
+
+    NOTES -. "for 'find who, then look up what'<br/>questions, feeds back in here" .-> EXTRACT
+    NOTES --> SYNTH
+
+    SYNTH["6. Synthesis<br/>combines the number and the notes,<br/>every claim traceable to its source"]
+    SYNTH --> OUT["Answer + Audit Envelope<br/>compiled SQL · join path · cache hit? ·<br/>note IDs · trace ID · latency"]
+
+    MCP["MCP server<br/>exposes this same pipeline as a tool<br/>for other AI agents to call directly"]
+    STRUCT -.-> MCP
+
+    style STRUCT fill:#e6f4ea,stroke:#2f9e44
+    style UNSTRUCT fill:#fff4e6,stroke:#e8890c
+    style SYNTH fill:#f3e8ff,stroke:#9c36b5
+    style OUT fill:#e6fcf5,stroke:#0ca678
+    style MCP fill:#e7f5ff,stroke:#1971c2
+```
+
+Every box above is also wrapped in tracing (OpenTelemetry → Langfuse) — not
+drawn as its own step because it isn't one path through the system, it's a
+layer running underneath all of them.
+
+### What each piece is actually for
+
+**1. A compiler instead of a smarter prompt.** `semantic_model.yaml`
+declares every metric, dimension, and join this system is allowed to
+compute — nothing else exists as far as the LLM's answer is concerned. The
+model's only job is to name which certified metric a question is asking
+for; a separate compiler turns that into real SQL using proper query
+building (never pasting values into a string). Ask for something outside
+the list and it fails to compile, loudly, instead of quietly making
+something up. Cost of this: two questions in the original eval set need a
+kind of query this model doesn't support, so those two fall back to the
+old "let the LLM write SQL" path — reported honestly below, not hidden.
+
+**2. Access control the model can't talk its way around.** A request can
+carry an identity (which tenant, which region). Before the query runs, that
+identity's allowed access is written directly into the query itself, after
+the model is done and can't influence it. An identity with no valid access
+is refused outright — never given an empty result that looks like a real
+answer of zero.
+
+**3. One tool, exposed the standard way.** The whole pipeline is also
+wrapped as an MCP server, so any MCP-speaking AI tool (Claude Code, Cursor,
+etc.) can call it directly instead of needing a bespoke integration. Tested
+by actually connecting a real MCP client to it, not just calling the
+Python function.
+
+**4. A cache that understands meaning, not exact wording.** "Show revenue
+by region" and "what's our regional revenue" are the same request. The
+cache key is a hash of the *resolved* metric request (plus the identity
+asking), not the raw sentence, so both phrasings hit the same cached
+answer. Rows are cached, not just the SQL, which is what actually makes the
+second answer fast.
+
+**5. Finding "who," then computing "what."** Some questions need both a
+qualitative read and a real number — *"why are our top customers
+complaining, and what do they pay us?"* First, a search over support notes
+finds which customers the complaint is about. Then that exact list of
+customer IDs is handed to the compiler as a filter — not left to the model
+to decide who counts, since that's exactly the kind of judgment call this
+whole system exists to take out of the model's hands.
+
+**6. Proof, not just an answer.** Every response comes back with an audit
+trail attached: the exact SQL that ran, the join path it took, whether it
+came from cache, which notes it cited, and how long it took. And every step
+of a request — routing, compiling, the security rewrite, cache, execution —
+is traced end-to-end and viewable afterward.
+
+### The numbers
+
+Same 25 questions, same model, before and after:
 
 | | before (LLM writes SQL) | after (LLM picks a metric) |
 |---|---|---|
@@ -297,19 +378,21 @@ on paper. Full write-up: [docs/semantic-gateway.md](docs/semantic-gateway.md).
 | Could even attempt it | n/a | 23/25 |
 | Bad/dangerous queries blocked | 5/5 | 5/5 |
 
-A second, harder set of 18 questions — built specifically to test the access
-control, caching, and "find who, then look up what" pieces — passed **17/18**.
-The one miss was the model doing something slightly wrong, not a bug in the
-system, and it's written up honestly rather than swept under the rug.
+A second, harder set of 18 questions — built specifically to test access
+control, caching, and the "find who, then compute what" pattern — passed
+**17/18**. The one miss was the model itself doing something slightly wrong
+mid-run, not a bug in the system, and it's written up honestly rather than
+swept under the rug. Full breakdown, including the bugs this testing
+actually caught and fixed: [docs/semantic-gateway.md](docs/semantic-gateway.md).
 
-**Two things worth saying plainly:**
+### Two things worth saying plainly
 
-- The support notes used for the "find who" feature are entirely made up —
-  generated from templates, not real customer data. That's stated in three
+- The support notes used for the "find who" feature are entirely made
+  up — generated from templates, not real customer data. Said in three
   places: the data file itself, the code that generates it, and here.
-- The "identity" behind access control is simulated too. There's no real
+- The identity behind access control is simulated too. There's no real
   login system — it's a stand-in that proves the access-control mechanism
-  actually works, not a claim of real multi-tenancy.
+  genuinely works, not a claim of real multi-tenancy.
 
 Still sits behind a feature flag; the agent above is untouched and still
 live. Merging this into the main version is a separate decision, not made yet.
