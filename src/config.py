@@ -50,6 +50,15 @@ class Settings(BaseSettings):
     # stale for long without anyone asking again.
     cache_ttl_seconds: int = 300
 
+    # Layer 6 observability. Langfuse's OTel-native ingestion endpoint --
+    # see src/tracing.py. Empty keys mean tracing is a documented no-op
+    # (init_tracing() logs once and returns), not a crash: this project
+    # must run identically with or without an observability backend
+    # configured, the same principle /health already follows.
+    langfuse_public_key: str = ""
+    langfuse_secret_key: str = ""
+    langfuse_host: str = "https://cloud.langfuse.com"
+
 
 @lru_cache
 def get_settings() -> Settings:

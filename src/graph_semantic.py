@@ -57,6 +57,7 @@ from src.compiler.intent_compiler import (
 from src.compiler.security import SecurityContextError, inject_security_context
 from src.cache.intent_hash import hash_intent
 from src.cache.session_store import SessionStore
+from src.tracing import traced_span
 from src.config import get_settings
 from src.graph import (
     AgentState,
@@ -79,6 +80,25 @@ _SCHEMA_COMPACTION_STRATEGY = "column_sample"
 
 ROUTE_COMPILED = "compiled"
 ROUTE_FALLBACK = "fallback"
+
+
+def _traced_node(span_name: str, node_fn):
+    """Wrap a LangGraph node callable in an OTel span, without touching the
+    node function's own source.
+
+    This is how guard/execute -- imported verbatim from src.graph, the
+    module this build never edits -- still get span coverage: the wrapping
+    happens at the call site where the graph is assembled, around the
+    already-built callable, never inside graph.py itself. The wrapped
+    function still IS the same guardrail/execution logic; only a span
+    starts before it runs and ends after.
+    """
+
+    def wrapped(state):
+        with traced_span(span_name):
+            return node_fn(state)
+
+    return wrapped
 
 
 class SemanticAgentState(AgentState, total=False):
@@ -260,11 +280,15 @@ def _make_compile(model: semantic_model.SemanticModel, settings: object):
         if principal is not None:
             # Opt-in: a request with no on_behalf_of compiles exactly as it
             # did before Layer 2 existed. See src/compiler/security.py's
-            # module docstring for the full contract.
+            # module docstring for the full contract. Its own child span
+            # (nested under "compile") is possible here specifically because
+            # this call site -- unlike guardrails.py/cost_guard.py's internal
+            # dry-run call -- lives in a module this build owns and edits.
             try:
-                expression = inject_security_context(
-                    expression, principal.get("tenant_id"), principal.get("region"), model
-                )
+                with traced_span("security_injection", region=principal.get("region")):
+                    expression = inject_security_context(
+                        expression, principal.get("tenant_id"), principal.get("region"), model
+                    )
             except NotImplementedError:
                 log.error("security.inject_security_context() is still a stub")
                 return {
@@ -495,14 +519,14 @@ def build_graph(
     generate_sql = _make_generate_sql(llm, schema_prompt)
 
     graph = StateGraph(SemanticAgentState)
-    graph.add_node("extract_intent", _make_extract_intent(llm, model))
-    graph.add_node("cache_check", _make_cache_check(session_store))
-    graph.add_node("compile", _make_compile(model, settings))
-    graph.add_node("fallback", _make_fallback(generate_sql))
-    graph.add_node("guard", _make_guard(schema_full, settings))
-    graph.add_node("execute", _execute_node)
-    graph.add_node("cache_write", _make_cache_write(session_store, settings))
-    graph.add_node("explain", _make_explain(llm))
+    graph.add_node("extract_intent", _traced_node("intent_extraction", _make_extract_intent(llm, model)))
+    graph.add_node("cache_check", _traced_node("cache_check", _make_cache_check(session_store)))
+    graph.add_node("compile", _traced_node("compile", _make_compile(model, settings)))
+    graph.add_node("fallback", _traced_node("fallback", _make_fallback(generate_sql)))
+    graph.add_node("guard", _traced_node("guard", _make_guard(schema_full, settings)))
+    graph.add_node("execute", _traced_node("execution", _execute_node))
+    graph.add_node("cache_write", _traced_node("cache_write", _make_cache_write(session_store, settings)))
+    graph.add_node("explain", _traced_node("explain", _make_explain(llm)))
     graph.add_node("halt", _halt)
 
     graph.set_entry_point("extract_intent")
