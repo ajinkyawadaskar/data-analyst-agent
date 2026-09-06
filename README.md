@@ -262,6 +262,10 @@ files, and I wanted to be the one who made them.
 Python 3.11, BigQuery, sqlglot, LangGraph, Gemini 3.1 Flash Lite, FastAPI,
 DeepEval, Streamlit, Railway.
 
+Added by the Semantic Execution Gateway branch: Pydantic, SQLite (WAL),
+LanceDB (vector search / RAG), Model Context Protocol (MCP) via FastMCP,
+OpenTelemetry, Langfuse.
+
 ## Semantic Execution Gateway (`feature/semantic-gateway`, complete)
 
 The agent above works by letting the LLM write SQL and then checking it
