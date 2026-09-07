@@ -357,6 +357,28 @@ mid-run, not a bug in the system, and it's written up honestly rather than
 swept under the rug. Full breakdown, including the bugs this testing
 actually caught and fixed: [docs/semantic-gateway.md](docs/semantic-gateway.md).
 
+### Getting this to production
+
+What's already shaped for it: stateless FastAPI, cost/safety checks before
+every execute, and an audit trail on every response — none of that needs
+rework. What would:
+
+- **Real identity, not simulated.** `on_behalf_of` is hand-typed today.
+  Production needs real auth (JWT/OAuth) resolving to a tenant/region
+  server-side, so the caller can't just claim one.
+- **Redis instead of SQLite for the cache.** SQLite WAL is fine for one
+  process; multiple API instances behind a load balancer need a shared
+  cache, not a local file. Deliberate, not an oversight — see IDEAS.md.
+- **Per-tenant rate limiting.** Today's cost ceiling stops one expensive
+  query, not one tenant hammering the API.
+- **Evals gated in CI**, not run by hand — a `semantic_model.yaml` change
+  that breaks a certified metric should fail the PR, not a demo.
+- **A second warehouse dialect proven, not just wired.** `dialect: bigquery`
+  threads through to `.sql(dialect=...)`, but nothing's actually run
+  against Athena or Snowflake yet — the seam exists, untested.
+- **Alerting on the traces**, not just visibility — a broken pipeline
+  should page someone, not sit in a dashboard nobody's watching.
+
 ### Two things worth saying plainly
 
 - The support notes used for the "find who" feature are entirely made
