@@ -291,56 +291,103 @@ instead of running and quietly returning a wrong-but-plausible number.
 
 ![Semantic Execution Gateway architecture](docs/images/gateway-architecture.jpeg)
 
-Every box above is also wrapped in tracing (OpenTelemetry → Langfuse) — not
-drawn as its own step because it isn't one path through the system, it's a
-layer running underneath all of them.
+The dashed box in the diagram is deliberate — every step inside it is
+traced (OpenTelemetry → Langfuse), so it's drawn as one boundary around the
+whole pipeline rather than a step of its own. Below is the same thing in
+words, one layer at a time, in enough depth that I can actually defend each
+decision out loud instead of just pointing at the picture.
 
-### What each piece is actually for
+### What each layer does, and why I built it that way
 
-**1. A compiler instead of a smarter prompt.** `semantic_model.yaml`
-declares every metric, dimension, and join this system is allowed to
-compute — nothing else exists as far as the LLM's answer is concerned. The
-model's only job is to name which certified metric a question is asking
-for; a separate compiler turns that into real SQL using proper query
-building (never pasting values into a string). Ask for something outside
-the list and it fails to compile, loudly, instead of quietly making
-something up. Cost of this: two questions in the original eval set need a
-kind of query this model doesn't support, so those two fall back to the
-old "let the LLM write SQL" path — reported honestly below, not hidden.
+**1. A compiler instead of a smarter prompt.** The problem I kept running
+into on the path above: I can tell a model "don't invent columns," but
+that's a suggestion, not a rule, and it still has to guess column names,
+join paths, and metric math from a compacted schema on every single
+question. So I took the guessing out of the model's hands entirely.
+`semantic_model.yaml` is one file that lists every metric, dimension, and
+join this system is allowed to know about — `total_revenue`,
+`conversion_rate_pct`, and so on, each one tied to the exact formula behind
+it. The model's only job now is to read a question and name which certified
+metric it's asking for. A separate compiler takes that name and builds the
+real SQL with proper query-building tools (`sqlglot`), never string
+concatenation, so there's no clever phrasing that sneaks a raw column
+reference through. Ask for something off that list — "average order
+value," which needs a kind of subquery this model deliberately doesn't
+support — and it fails to compile instead of quietly returning something
+plausible-looking. A hallucinated metric becomes a name that doesn't
+resolve, not a wrong number that looks right. Cost of this: two questions
+in my eval set need that unsupported shape, so those two fall back to the
+old "let the LLM write SQL" path — reported honestly in the numbers below,
+not hidden.
 
-**2. Access control the model can't talk its way around.** A request can
-carry an identity (which tenant, which region). Before the query runs, that
-identity's allowed access is written directly into the query itself, after
-the model is done and can't influence it. An identity with no valid access
-is refused outright — never given an empty result that looks like a real
-answer of zero.
+**2. Access control the model can't talk its way around.** A syntactically
+perfect query can still leak data across identities if nothing enforces who
+gets to see what. A request can carry an identity — which tenant, which
+region — and instead of trusting the model to remember and honor it, the
+code rewrites the *compiled* query's AST after the model is done touching
+it, adding the row filter directly into the `WHERE` clause. The model never
+sees this step; there's nothing to talk it out of. If the identity doesn't
+resolve to any real access at all, the request is refused outright — never
+answered with an empty result that quietly looks like a legitimate zero.
+I found the honest edge of this while testing it: the guarantee only holds
+for a query that actually touches a protected table — a question that
+never joins to the guarded entity isn't restricted by anything here,
+regardless of identity. I wrote that limitation down instead of letting the
+diagram imply more than the code actually does.
 
-**3. One tool, exposed the standard way.** The whole pipeline is also
-wrapped as an MCP server, so any MCP-speaking AI tool (Claude Code, Cursor,
-etc.) can call it directly instead of needing a bespoke integration. Tested
-by actually connecting a real MCP client to it, not just calling the
-Python function.
+**3. One tool, exposed the standard way.** Once the pipeline existed, I
+didn't want it locked inside one REST API. I wrapped the same
+compile → secure → guard → execute chain as an MCP (Model Context Protocol)
+server — one tool, `query_semantic_metric`, plus a read-only resource
+listing the certified metrics glossary. Any MCP-aware AI client (Claude
+Code, Cursor, etc.) can call it directly, no bespoke integration required.
+I proved this by connecting a real MCP client and calling it live, not just
+unit-testing the Python function underneath — a tool that's only ever been
+called by its own test suite hasn't actually proven it works over the
+protocol.
 
-**4. A cache that understands meaning, not exact wording.** "Show revenue
-by region" and "what's our regional revenue" are the same request. The
-cache key is a hash of the *resolved* metric request (plus the identity
-asking), not the raw sentence, so both phrasings hit the same cached
-answer. Rows are cached, not just the SQL, which is what actually makes the
-second answer fast.
+**4. A cache that understands meaning, not exact wording.** Hitting
+BigQuery on every question is slow, and at scale, costly — and a plain
+string cache misses the obvious case where "show me revenue by region" and
+"what's our regional revenue" are the same request in different words. So
+the cache key isn't the question text, it's a hash of the *resolved*
+intent (which metric, which filters) plus the identity asking, computed
+after the model has already turned the fuzzy English into something
+structured. Two paraphrases of the same request collapse to the same key.
+It caches the actual rows, not just the SQL string, which is what makes the
+second hit fast instead of skipping SQL generation and still round-tripping
+to BigQuery. Measured, not assumed: a cold run took ~3.9 seconds; the
+cached repeat came back in ~1 second — a 74% cut — and the raw cache read
+itself is under a fifth of a millisecond.
 
-**5. Finding "who," then computing "what."** Some questions need both a
-qualitative read and a real number — *"why are our top customers
-complaining, and what do they pay us?"* First, a search over support notes
-finds which customers the complaint is about. Then that exact list of
-customer IDs is handed to the compiler as a filter — not left to the model
-to decide who counts, since that's exactly the kind of judgment call this
-whole system exists to take out of the model's hands.
+**5. Finding "who," then computing "what."** Some questions genuinely need
+two kinds of reasoning stitched together — *"why are our top customers
+complaining, and what do they pay us?"* has a fuzzy half (who's
+complaining) and a precise half (what do they pay). A small rule-based
+router looks at the shape of the question and decides whether it needs the
+compiled path alone, a note search alone, or both. For the "both" case, a
+vector search over support notes finds the right customers first, and that
+exact list of customer IDs gets handed to the compiler as a hard filter —
+deliberately not left to the model to decide who counts, since that's
+exactly the kind of judgment call the rest of this system exists to take
+away from it. Getting the model to accept that split took a few rounds of
+prompt tuning — it kept trying to refuse the whole question because it
+couldn't personally identify the customers, even though the filter was
+already being applied by code underneath it, not by the model's own
+judgment.
 
-**6. Proof, not just an answer.** Every response comes back with an audit
-trail attached: the exact SQL that ran, the join path it took, whether it
-came from cache, which notes it cited, and how long it took. And every step
-of a request — routing, compiling, the security rewrite, cache, execution —
-is traced end-to-end and viewable afterward.
+**6. Proof, not just an answer.** Every response carries an audit trail:
+the exact SQL that ran, the join path it took, whether it came from cache,
+which notes it cited, a unique ID, and how long it took — so nobody has to
+take "trust me" as the only option. Underneath that, every step of a
+request — routing, intent extraction, the security rewrite, cache check,
+execution — is wrapped in a trace and shipped to Langfuse via OpenTelemetry,
+so a slow or wrong answer can actually be debugged after the fact instead
+of guessed at. I checked this two different ways before trusting it: the
+export call itself reported success, and I separately confirmed the trace
+actually showed up in the Langfuse dashboard — "no exception was thrown"
+and "the data is actually visible" are two different claims, and only one
+of them is proof.
 
 ### The numbers
 
