@@ -299,95 +299,46 @@ decision out loud instead of just pointing at the picture.
 
 ### What each layer does, and why I built it that way
 
-**1. A compiler instead of a smarter prompt.** The problem I kept running
-into on the path above: I can tell a model "don't invent columns," but
-that's a suggestion, not a rule, and it still has to guess column names,
-join paths, and metric math from a compacted schema on every single
-question. So I took the guessing out of the model's hands entirely.
-`semantic_model.yaml` is one file that lists every metric, dimension, and
-join this system is allowed to know about — `total_revenue`,
-`conversion_rate_pct`, and so on, each one tied to the exact formula behind
-it. The model's only job now is to read a question and name which certified
-metric it's asking for. A separate compiler takes that name and builds the
-real SQL with proper query-building tools (`sqlglot`), never string
-concatenation, so there's no clever phrasing that sneaks a raw column
-reference through. Ask for something off that list — "average order
-value," which needs a kind of subquery this model deliberately doesn't
-support — and it fails to compile instead of quietly returning something
-plausible-looking. A hallucinated metric becomes a name that doesn't
-resolve, not a wrong number that looks right. Cost of this: two questions
-in my eval set need that unsupported shape, so those two fall back to the
-old "let the LLM write SQL" path — reported honestly in the numbers below,
-not hidden.
+**1. A compiler instead of a smarter prompt.** Telling a model "don't
+invent columns" only lowers the odds — it doesn't stop it. So the model
+stops writing SQL. `semantic_model.yaml` lists every certified metric,
+dimension, and join; the model's only job is naming which one a question
+needs. A separate compiler turns that into real SQL with `sqlglot`, never
+string concatenation. Ask for something off the list and it fails to
+compile instead of guessing. Two questions in my eval set need an
+unsupported shape and fall back to the old LLM-writes-SQL path — counted
+honestly in the numbers below.
 
-**2. Access control the model can't talk its way around.** A syntactically
-perfect query can still leak data across identities if nothing enforces who
-gets to see what. A request can carry an identity — which tenant, which
-region — and instead of trusting the model to remember and honor it, the
-code rewrites the *compiled* query's AST after the model is done touching
-it, adding the row filter directly into the `WHERE` clause. The model never
-sees this step; there's nothing to talk it out of. If the identity doesn't
-resolve to any real access at all, the request is refused outright — never
-answered with an empty result that quietly looks like a legitimate zero.
-I found the honest edge of this while testing it: the guarantee only holds
-for a query that actually touches a protected table — a question that
-never joins to the guarded entity isn't restricted by anything here,
-regardless of identity. I wrote that limitation down instead of letting the
-diagram imply more than the code actually does.
+**2. Access control the model can't talk its way around.** A request can
+carry an identity (tenant, region). The code rewrites the *compiled*
+query's AST to add a row filter, after the model is done — nothing to talk
+it out of. No valid access means an outright refusal, never a quiet empty
+result. Caveat I found and kept: this only applies to a query that actually
+touches a protected table.
 
-**3. One tool, exposed the standard way.** Once the pipeline existed, I
-didn't want it locked inside one REST API. I wrapped the same
-compile → secure → guard → execute chain as an MCP (Model Context Protocol)
-server — one tool, `query_semantic_metric`, plus a read-only resource
-listing the certified metrics glossary. Any MCP-aware AI client (Claude
-Code, Cursor, etc.) can call it directly, no bespoke integration required.
-I proved this by connecting a real MCP client and calling it live, not just
-unit-testing the Python function underneath — a tool that's only ever been
-called by its own test suite hasn't actually proven it works over the
-protocol.
+**3. One tool, exposed the standard way.** The same pipeline is wrapped as
+an MCP (Model Context Protocol) server — one tool, `query_semantic_metric`,
+plus a resource listing certified metrics — so any MCP client (Claude Code,
+Cursor) can call it directly. Tested with a real MCP client, not just a
+Python function call.
 
-**4. A cache that understands meaning, not exact wording.** Hitting
-BigQuery on every question is slow, and at scale, costly — and a plain
-string cache misses the obvious case where "show me revenue by region" and
-"what's our regional revenue" are the same request in different words. So
-the cache key isn't the question text, it's a hash of the *resolved*
-intent (which metric, which filters) plus the identity asking, computed
-after the model has already turned the fuzzy English into something
-structured. Two paraphrases of the same request collapse to the same key.
-It caches the actual rows, not just the SQL string, which is what makes the
-second hit fast instead of skipping SQL generation and still round-tripping
-to BigQuery. Measured, not assumed: a cold run took ~3.9 seconds; the
-cached repeat came back in ~1 second — a 74% cut — and the raw cache read
-itself is under a fifth of a millisecond.
+**4. A cache that understands meaning, not wording.** "Revenue by region"
+and "regional revenue" are the same request. The cache key is a hash of the
+resolved intent plus identity, not the raw sentence, and it caches rows,
+not just SQL. Measured: 3.9s cold vs. ~1s cached — a 74% cut.
 
-**5. Finding "who," then computing "what."** Some questions genuinely need
-two kinds of reasoning stitched together — *"why are our top customers
-complaining, and what do they pay us?"* has a fuzzy half (who's
-complaining) and a precise half (what do they pay). A small rule-based
-router looks at the shape of the question and decides whether it needs the
-compiled path alone, a note search alone, or both. For the "both" case, a
-vector search over support notes finds the right customers first, and that
-exact list of customer IDs gets handed to the compiler as a hard filter —
-deliberately not left to the model to decide who counts, since that's
-exactly the kind of judgment call the rest of this system exists to take
-away from it. Getting the model to accept that split took a few rounds of
-prompt tuning — it kept trying to refuse the whole question because it
-couldn't personally identify the customers, even though the filter was
-already being applied by code underneath it, not by the model's own
-judgment.
+**5. Finding "who," then computing "what."** Some questions need both —
+*"why are our top customers complaining, and what do they pay us?"* A
+router sends the fuzzy half to note search first; the customer IDs it finds
+get handed to the compiler as a hard filter, not left to the model's
+judgment. Took a few prompt iterations to stop the model from refusing the
+whole question.
 
-**6. Proof, not just an answer.** Every response carries an audit trail:
-the exact SQL that ran, the join path it took, whether it came from cache,
-which notes it cited, a unique ID, and how long it took — so nobody has to
-take "trust me" as the only option. Underneath that, every step of a
-request — routing, intent extraction, the security rewrite, cache check,
-execution — is wrapped in a trace and shipped to Langfuse via OpenTelemetry,
-so a slow or wrong answer can actually be debugged after the fact instead
-of guessed at. I checked this two different ways before trusting it: the
-export call itself reported success, and I separately confirmed the trace
-actually showed up in the Langfuse dashboard — "no exception was thrown"
-and "the data is actually visible" are two different claims, and only one
-of them is proof.
+**6. Proof, not just an answer.** Every response carries an audit trail —
+SQL run, join path, cache hit, cited notes, latency. Every step is traced
+end-to-end via OpenTelemetry → Langfuse. Verified two ways: the export call
+reported success, and I confirmed the trace actually showed up in the
+dashboard.
 
 ### The numbers
 
