@@ -1,0 +1,136 @@
+{
+  "by_kind": {
+    "structured": "9/9",
+    "permission_denied": "4/4",
+    "cache_hit_repeat": "2/2",
+    "stack": "2/3"
+  },
+  "results": [
+    {
+      "id": "s01",
+      "kind": "structured",
+      "passed": true,
+      "msg": "matched 26 rows (unordered)",
+      "route": "compiled",
+      "cache_hit": false
+    },
+    {
+      "id": "s02",
+      "kind": "structured",
+      "passed": true,
+      "msg": "matched 111 rows (unordered)",
+      "route": "compiled",
+      "cache_hit": false
+    },
+    {
+      "id": "s03",
+      "kind": "structured",
+      "passed": true,
+      "msg": "matched 1 rows (unordered)",
+      "route": "compiled",
+      "cache_hit": false
+    },
+    {
+      "id": "s04",
+      "kind": "structured",
+      "passed": true,
+      "msg": "matched 5 rows (unordered)",
+      "route": "compiled",
+      "cache_hit": false
+    },
+    {
+      "id": "s05",
+      "kind": "structured",
+      "passed": true,
+      "msg": "matched 2 rows (unordered)",
+      "route": "compiled",
+      "cache_hit": false
+    },
+    {
+      "id": "s06",
+      "kind": "structured",
+      "passed": true,
+      "msg": "matched 5 rows in order",
+      "route": "compiled",
+      "cache_hit": false
+    },
+    {
+      "id": "s07",
+      "kind": "structured",
+      "passed": true,
+      "msg": "matched 16 rows (unordered)",
+      "route": "compiled",
+      "cache_hit": false
+    },
+    {
+      "id": "s08",
+      "kind": "structured",
+      "passed": true,
+      "msg": "matched 3 rows in order",
+      "route": "compiled",
+      "cache_hit": false
+    },
+    {
+      "id": "s09",
+      "kind": "structured",
+      "passed": true,
+      "msg": "matched 1 rows (unordered)",
+      "route": "compiled",
+      "cache_hit": false
+    },
+    {
+      "id": "p01",
+      "kind": "permission_denied",
+      "passed": true,
+      "msg": "denied as expected: compilation refused: access denied: region 'UNKNOWN' does not resolve to any permitted access; denying rather than emitting a zero-row predicate"
+    },
+    {
+      "id": "p02",
+      "kind": "permission_denied",
+      "passed": true,
+      "msg": "compiled and ran to a structurally empty result: [{'total_revenue': None}]"
+    },
+    {
+      "id": "p03",
+      "kind": "permission_denied",
+      "passed": true,
+      "msg": "compiled and ran to a structurally empty result: [{'conversion_rate_pct': None}]"
+    },
+    {
+      "id": "p04",
+      "kind": "permission_denied",
+      "passed": true,
+      "msg": "denied as expected: compilation refused: access denied: region 'MARS' does not resolve to any permitted access; denying rather than emitting a zero-row predicate"
+    },
+    {
+      "id": "c01",
+      "kind": "cache_hit_repeat",
+      "passed": true,
+      "msg": "cache_hit=True, rows identical to s01"
+    },
+    {
+      "id": "c02",
+      "kind": "cache_hit_repeat",
+      "passed": true,
+      "msg": "cache_hit=True, rows identical to s03"
+    },
+    {
+      "id": "k01",
+      "kind": "stack",
+      "passed": true,
+      "msg": "route=stack, cited=['note-0069', 'note-0141', 'note-0169', 'note-0080', 'note-0046'], categories={'latency_complaint'}"
+    },
+    {
+      "id": "k02",
+      "kind": "stack",
+      "passed": true,
+      "msg": "route=stack, cited=['note-0084', 'note-0171', 'note-0041', 'note-0063', 'note-0179'], categories={'billing'}"
+    },
+    {
+      "id": "k03",
+      "kind": "stack",
+      "passed": false,
+      "msg": "router picked 'stack'; stacking.answer() raised: intent_extraction refused: 1 validation error for Intent\nfilters.0\n  Value error, operator 'in' requires a list value [type=value_error, input_value={'field': 'user_id', 'ope...e': 'affected_accounts'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/value_error"
+    }
+  ]
+}

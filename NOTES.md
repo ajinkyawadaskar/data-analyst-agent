@@ -291,3 +291,140 @@ If the graph binds tools, AFC can issue several requests per logical
 turn. That would explain how 20 requests disappeared during what felt
 like three or four attempts, and it changes the eval quota arithmetic by
 a factor of 2-3. Needs checking before the real run.
+
+## Day 1 0:30 -- Surprise: the published 20% was measured against a broken guardrail
+Re-ran the existing eval set on main before writing any gateway code, on the
+theory that you cannot claim a delta against a number you have not re-measured.
+
+    answer_accuracy   5/25 (20%)  ->  8/25 (32%)
+    avg_retries             0.96  ->  0.28
+    cases with no rows        11  ->  1
+
+Nothing about the model changed. git log explains it:
+
+    225569a  22:11  Run evals: 5/25 answer accuracy
+    b8c198f  23:20  Fix column validation rejecting SELECT aliases
+
+The eval run predates the alias bugfix by 69 minutes. The agent had been
+writing correct SQL, the column check was rejecting ORDER BY <select_alias>,
+the retry loop burned two attempts and gave up. Eleven of twenty-five.
+
+Two things I got wrong, both worth keeping:
+
+1. The README attributed the gap to "a lightweight model that struggles with
+   complex joins." A guardrail false positive and a model limitation present
+   identically -- no answer -- and I attributed the whole thing to the model
+   without checking. Same failure DIRECTION as the 3:10 entry, one level up:
+   there a lookup miss silently disabled a check, here a check's own bug
+   silently became the model's fault.
+
+2. +12 points overstates it. Of the ten cases that stopped returning nothing,
+   only three became correct; the rest now execute and return the wrong result.
+   The fix converted "blocked" into "runs, still wrong."
+
+Also: one case that passed before (tl03) failed this run while four others
+started passing. Single run, non-deterministic model, so +-1 case is noise.
+The 5:25 entry already said any published number should say how many runs it
+came from, and the published one did not. This one does.
+
+RESUME CONSEQUENCE: the gateway's accuracy delta gets measured against 32%,
+not 20%. Comparing against the stale number would have credited a compiled
+semantic layer with a bugfix that was already merged.
+
+## Day 1 0:45 -- The eval runner cannot run from a clean shell
+python -m evals.run_evals dies on DefaultCredentialsError even with
+GOOGLE_APPLICATION_CREDENTIALS set in .env. pydantic-settings populates the
+Settings object; google.auth reads os.environ directly, and nothing bridges
+the two. app.py papers over it with os.environ.setdefault at import. The
+eval runner has no equivalent, so it only ever worked in a shell that already
+had the var exported.
+
+Not fixing it in the runner today -- it is a one-line export and the real fix
+belongs in bq_client.get_client(), which is on the guardrail path I am not
+touching this build. Logged so it is not rediscovered.
+
+## Days 2-5 -- Condensed decision log (full narrative in LEARNING.md, concepts 18-46)
+
+This section was supposed to be written as-I-went per CLAUDE.md's own rule
+and wasn't -- LEARNING.md carried the day-by-day narrative instead. Written
+now, at Day 5's close, condensed to the decisions and tradeoffs an
+interviewer would actually ask about rather than a rehash of the blow-by-blow.
+
+**Why a compiler instead of a better prompt.** A prompt reduces the rate of
+bad SQL; it can't bound it. The Intent -> AST -> SQL path makes an
+off-model metric a name that fails to resolve, not a plausible-looking
+wrong query. Cost: two questions in the original 25 (tl02 AOV, tl17
+repeat-purchase rate) need a grouped subquery this model deliberately
+doesn't express, and fall back to the legacy path. Coverage (23/25) and
+accuracy-on-covered (11/23) are reported separately, always -- merging them
+either punishes the compiler for questions it was never meant to answer, or
+hides those questions entirely.
+
+**Why security is an AST rewrite, not a prompt instruction.** "Only show
+this region's data" is a suggestion a model can be talked out of by
+rephrasing the question. `inject_security_context` ANDs a row-policy
+predicate onto the compiled AST after the LLM is done contributing anything
+-- structurally out of reach of any phrasing. Decision made explicit in
+security.py: an identity with no resolvable region raises, it never emits a
+zero-row predicate that looks like a valid empty answer from the caller's
+side.
+
+**Why the security guarantee is scoped to entities with a declared policy,
+not global.** row_policies in semantic_model.yaml are opt-in per entity.
+A question whose compiled query never touches `users` or `ga_sessions` is
+unrestricted regardless of identity validity, and a question the compiler
+can't express falls back to the legacy path, which doesn't know `principal`
+exists at all. Found via the golden set's p04 case (an uncertified "average
+order value" measure fell back and returned real numbers under an invalid
+region) -- fixed by retargeting that case to a certified measure, not by
+pretending the scope is broader than it is.
+
+**Why SQLite over Redis for the semantic cache.** No horizontal-scaling
+story yet at this project's scale, and Redis is a whole extra service to
+run for a cache that's read far more than written. WAL mode gives
+concurrent reads without contending on the single writer lock. Cache key
+is `hash(compiled Intent JSON, principal)`, not the raw question string or
+the rendered SQL -- the principal has to be in the key or Layer 4 leaks
+Layer 2's row-filtered results across identities, and caching rows (not
+just SQL) is what makes the 74-89% latency reduction real instead of
+theoretical.
+
+**Why the stacking router is regex, not an LLM call.** Free, instant, and
+every routing decision traces to the exact pattern that fired -- which
+matters specifically because this layer's failure mode (silently answering
+half a two-part question) has to be auditable, not just usually-right. Cost
+is real: a phrasing with no listed trigger word for either shape
+(`"had trouble"` matched neither the structured nor unstructured pattern
+sets) silently misroutes. Found and fixed once, and it's a class of bug this
+router will always be able to have again -- the tradeoff, made with eyes
+open.
+
+**Why the deterministic user-scoping filter is code, not an LLM decision,
+in the stacking path.** Retrieval already resolved WHO the question is
+about; asking the LLM to also confirm that would reopen the same trust
+boundary Layer 2 exists to close in the compiled path. The model only ever
+decides WHAT to compute; the code appends `user_id IN (...)` after the
+fact. Getting the model to stop refusing the question on the "I can't
+identify these accounts" reasoning (true, but not its job) took three
+prompt iterations -- what worked was forbidding that specific wrong
+reasoning path explicitly, not describing the right one more clearly.
+
+**Why OTel + OTLP HTTP instead of a vendor SDK.** A config change swaps
+backends; a vendor SDK doesn't. `init_tracing()` with no keys configured is
+a documented no-op -- spans still get created, just not exported -- because
+observability tooling failing closed and taking the request down with it
+would be a worse outcome than a request that ran unobserved. Verified two
+ways: the OTLP export call itself returned `SpanExportResult.SUCCESS`, and
+the trace was independently confirmed visible in the Langfuse dashboard --
+neither alone would have been enough.
+
+**A bug the golden set caught that the original 25 never could:**
+`conversion_rate_pct`/`bounce_rate_pct`/`returned_order_pct` used raw
+`COUNTIF(...) / COUNT(*)`. A Layer 2 predicate that legitimately zeroes out
+the matching rows (the exact "structurally unsatisfiable" behavior Layer 2
+is supposed to produce) turned that into `division by zero: 0/0` at
+BigQuery instead of a clean `NULL` -- a security-correct denial crashing
+the request. Fixed with `SAFE_DIVIDE`. The original 25-question set has no
+identity-aware cases at all, so this was structurally invisible to it;
+that's the actual argument for building the golden set as a second file
+rather than trying to extend the first one.

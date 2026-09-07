@@ -1,7 +1,7 @@
 # Runtime only. Dev/eval extras live in requirements-dev.txt.
 google-cloud-bigquery>=3.25
 streamlit>=1.38
-sqlglot>=25.0
+sqlglot>=30.0
 langgraph>=0.2
 langchain-google-genai==4.3.5
 fastapi>=0.115
@@ -9,3 +9,8 @@ uvicorn>=0.30
 pydantic>=2.8
 pydantic-settings>=2.4
 python-dotenv>=1.0
+pyyaml>=6.0
+fastmcp>=4.0
+lancedb>=0.38
+opentelemetry-sdk>=1.44
+opentelemetry-exporter-otlp-proto-http>=1.44

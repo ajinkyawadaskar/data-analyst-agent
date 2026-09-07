@@ -1,0 +1,148 @@
+{
+  "cases": [
+    {
+      "id": "s01",
+      "kind": "structured",
+      "question": "What's our total revenue by product category?",
+      "expected_sql": "SELECT p.category, ROUND(SUM(oi.sale_price),2) AS total_revenue FROM `bigquery-public-data.thelook_ecommerce.order_items` oi JOIN `bigquery-public-data.thelook_ecommerce.products` p ON p.id = oi.product_id GROUP BY p.category",
+      "rationale": "Baseline aggregation + group-by against a certified measure/dimension pair (total_revenue x product_category), no filters. Cheapest structured case to write and closest in shape to evals/cases.json's tl01.",
+      "tags": ["aggregation", "group_by", "revenue"]
+    },
+    {
+      "id": "s02",
+      "kind": "structured",
+      "question": "What was our conversion rate by traffic source in August 2016?",
+      "expected_sql": "SELECT trafficSource.source AS source, ROUND(100 * SAFE_DIVIDE(COUNTIF(totals.transactions IS NOT NULL), COUNT(*)), 3) AS conversion_rate_pct FROM `bigquery-public-data.google_analytics_sample.ga_sessions_*` WHERE _TABLE_SUFFIX BETWEEN '20160801' AND '20160831' GROUP BY source",
+      "rationale": "Exercises the mandatory partition bound on ga_sessions (Layer 1 step 6) grouped by a certified GA dimension. August 2016 matches the real date range evals/cases.json's ga01-ga08 already use against this public dataset -- an invented date range returns nothing and proves nothing.",
+      "tags": ["conversion_rate", "partitioned_table", "ga_sessions", "group_by"]
+    },
+    {
+      "id": "s03",
+      "kind": "structured",
+      "question": "What's our average profit margin across the catalogue?",
+      "expected_sql": "SELECT ROUND(AVG((retail_price - cost) / NULLIF(retail_price, 0)) * 100, 2) AS avg_profit_margin_pct FROM `bigquery-public-data.thelook_ecommerce.products`",
+      "rationale": "Single-row, no group-by aggregate -- exercises execution_accuracy's unordered single-row path and the float tolerance decision, against the certified avg_profit_margin_pct measure (catalogue margin, matching semantic_model.yaml's own documented tl06 formula).",
+      "tags": ["margin", "single_row", "float_tolerance"]
+    },
+    {
+      "id": "s04",
+      "kind": "structured",
+      "question": "How many orders do we have by status?",
+      "expected_sql": "SELECT status, COUNT(*) AS order_count FROM `bigquery-public-data.thelook_ecommerce.orders` GROUP BY status",
+      "rationale": "A plain count aggregate grouped by a categorical dimension (order_status) -- the cheapest possible group-by shape, distinct from s01's revenue/products pairing.",
+      "tags": ["aggregation", "group_by", "orders"]
+    },
+    {
+      "id": "s05",
+      "kind": "structured",
+      "question": "What's the average customer age by gender?",
+      "expected_sql": "SELECT gender, ROUND(AVG(age), 2) AS avg_customer_age FROM `bigquery-public-data.thelook_ecommerce.users` GROUP BY gender",
+      "rationale": "A second grouped-average case (as opposed to s03's single-row average) against a different entity (users) -- gives execution_accuracy's multiset match a small, low-cardinality, decimal-valued grouped case.",
+      "tags": ["aggregation", "group_by", "users", "float_tolerance"]
+    },
+    {
+      "id": "s06",
+      "kind": "structured",
+      "question": "What are our top 5 product brands by highest retail price?",
+      "expected_sql": "SELECT brand, ROUND(MAX(retail_price), 2) AS max_retail_price FROM `bigquery-public-data.thelook_ecommerce.products` GROUP BY brand ORDER BY max_retail_price DESC LIMIT 5",
+      "rationale": "Top-N with an explicit ORDER BY + LIMIT -- exercises decision (a)'s positional-order-must-match path against the certified max_retail_price measure, not the default unordered multiset path every other thelook case here exercises.",
+      "tags": ["order_by", "top_n", "products", "float_tolerance"]
+    },
+    {
+      "id": "s07",
+      "kind": "structured",
+      "question": "What's our total revenue by customer country?",
+      "expected_sql": "SELECT u.country, ROUND(SUM(oi.sale_price), 2) AS total_revenue FROM `bigquery-public-data.thelook_ecommerce.order_items` oi JOIN `bigquery-public-data.thelook_ecommerce.users` u ON oi.user_id = u.id GROUP BY u.country",
+      "rationale": "Requires a join (order_items -> users) to reach the user_country dimension -- exercises Layer 1's join-path resolution, not just a single-entity query like s01/s03/s04/s05.",
+      "tags": ["join", "revenue", "users"]
+    },
+    {
+      "id": "s08",
+      "kind": "structured",
+      "question": "What were our top device categories by session count in August 2016?",
+      "expected_sql": "SELECT device.deviceCategory AS device, COUNT(*) AS session_count FROM `bigquery-public-data.google_analytics_sample.ga_sessions_*` WHERE _TABLE_SUFFIX BETWEEN '20160801' AND '20160831' GROUP BY device ORDER BY session_count DESC LIMIT 5",
+      "rationale": "A second order-sensitive case with a different shape (GA, partitioned, DESC + LIMIT) than s06's thelook top-N -- confirms the ORDER BY path works across both modelled datasets.",
+      "tags": ["order_by", "top_n", "ga_sessions", "partitioned_table"]
+    },
+    {
+      "id": "s09",
+      "kind": "structured",
+      "question": "What's our average days to ship?",
+      "expected_sql": "SELECT ROUND(AVG(TIMESTAMP_DIFF(shipped_at, created_at, HOUR)) / 24, 2) AS avg_days_to_ship FROM `bigquery-public-data.thelook_ecommerce.orders` WHERE shipped_at IS NOT NULL",
+      "rationale": "Single-row aggregate whose certified measure (avg_days_to_ship) carries its own mandatory built-in filter (shipped_at IS NOT NULL) -- checks the compiler applies a measure-level filter even when the question itself names no filter at all.",
+      "tags": ["single_row", "float_tolerance", "orders"]
+    },
+    {
+      "id": "p01",
+      "kind": "permission_denied",
+      "question": "How many customers do we have?",
+      "on_behalf_of": {"tenant_id": "acme-co", "region": "UNKNOWN"},
+      "rationale": "user_count's base_entity is users, so the users row-policy entity is ALWAYS in scope for this question regardless of how the intent extractor phrases dimensions -- a more deterministic trigger for the policy than a question that only implies a users join. region='UNKNOWN' does not resolve to any entry in security.py's REGION_TO_COUNTRIES mapping, so this must raise SecurityContextError outright -- the caller has no permitted access at all, not zero rows that merely look like a valid empty answer.",
+      "tags": ["security", "invalid_region", "raises"]
+    },
+    {
+      "id": "p02",
+      "kind": "permission_denied",
+      "question": "What's the total revenue from customers in Japan?",
+      "on_behalf_of": {"tenant_id": "acme-co", "region": "AMER"},
+      "rationale": "Japan is an APAC country, not one of AMER's. An AMER-scoped caller's injected country-IN predicate can never be simultaneously true with a query asking specifically about Japan -- the compiled query must be structurally unsatisfiable (a real SELECT that runs and returns a NULL/empty aggregate by construction), not raise, and not merely happen to return zero because there's no Japanese revenue this period. Distinguished from p01/p04 by the 'unsatisfiable' tag rather than 'raises': AMER is a VALID region with real permitted access, just not for Japan.",
+      "tags": ["security", "cross_region_filter", "unsatisfiable"]
+    },
+    {
+      "id": "p03",
+      "kind": "permission_denied",
+      "question": "Show me the conversion rate for customers in Germany.",
+      "on_behalf_of": {"tenant_id": "acme-co", "region": "APAC"},
+      "rationale": "Germany is EMEA, not APAC. Mirrors p02's pattern (valid caller region, but the question's own filter targets a country outside that region) against a different measure and a partitioned table (ga_sessions) instead of orders. Also the case that caught a real bug: conversion_rate_pct's formula originally used raw division (COUNTIF(...)/COUNT(*)) rather than SAFE_DIVIDE, so a security predicate that legitimately zeroes out the matching rows crashed the query with 'division by zero: 0/0' instead of returning NULL -- fixed in semantic_model.yaml. This case is what a security-correct denial turning into a live BigQuery error looks like when it's still there.",
+      "tags": ["security", "cross_region_filter", "unsatisfiable", "ga_sessions"]
+    },
+    {
+      "id": "p04",
+      "kind": "permission_denied",
+      "question": "What's the average customer age?",
+      "on_behalf_of": {"tenant_id": "beta-corp", "region": "MARS"},
+      "rationale": "A second invalid-region case (mirrors p01's mechanism -- avg_customer_age's base_entity is also users, so the policy is always in scope) but against a different tenant_id and measure, and a question with no explicit geography mentioned at all -- confirms the denial fires purely off the identity, independent of what the question itself asks about. (An earlier version of this case asked for an uncertified 'average order value' measure, which silently fell back to the legacy LLM path -- a path Layer 2 never touches at all, by design -- and returned real numbers despite the invalid region. Reworded to a certified measure so this case actually exercises what it claims to.)",
+      "tags": ["security", "invalid_region", "raises"]
+    },
+    {
+      "id": "c01",
+      "kind": "cache_hit_repeat",
+      "question": "Can you show me revenue broken down by product category?",
+      "paraphrase_of": "s01",
+      "rationale": "Same measure, same dimension, no filters, as s01 -- phrased as a request rather than a question and with 'broken down by' instead of 'by'. Should resolve to the identical Intent and therefore the identical Layer 4 cache key.",
+      "tags": ["cache", "paraphrase"]
+    },
+    {
+      "id": "c02",
+      "kind": "cache_hit_repeat",
+      "question": "What's our average profit margin right now?",
+      "paraphrase_of": "s03",
+      "rationale": "Paraphrases s03's single-row avg_profit_margin_pct measure with a relative-time-flavored phrasing (\"right now\") that carries no actual filter -- a second, structurally different cache pair (single-row vs s01/c01's grouped pair) to check the hash doesn't accidentally key off row shape.",
+      "tags": ["cache", "paraphrase"]
+    },
+    {
+      "id": "k01",
+      "kind": "stack",
+      "question": "Why are our highest-usage accounts complaining about latency, and what's their combined revenue?",
+      "expected_note_category": "latency_complaint",
+      "rationale": "The canonical stacking example this project's Day 4 DoD is built around. Exercises the full chain: router picks 'stack', retrieval surfaces latency_complaint-tagged notes (tools/generate_notes.py's real category name -- an earlier version of this case used the shortened label 'latency', which never matches a real note), compilation scopes revenue to exactly those accounts' user_ids, and synthesis cites both halves.",
+      "tags": ["stack", "canonical", "latency_complaint"]
+    },
+    {
+      "id": "k02",
+      "kind": "stack",
+      "question": "What do customers who complained about billing pay us in total?",
+      "expected_note_category": "billing",
+      "rationale": "A second stacking case with a different note category (billing rather than latency) and a different phrasing shape (\"who complained about X\" rather than \"why are accounts complaining\"). An earlier version of this case (\"had trouble authenticating\") never matched src/router.py's _UNSTRUCTURED_PATTERNS at all -- no keyword there means 'trouble', only complain/feedback/mention/say/sentiment/notes/review/ticket/issue/problem/unhappy-family words -- and silently routed 'structured', dropping the qualitative half entirely. Reworded to use 'complained', a real trigger word, so this case tests the router's generalization rather than accidentally testing its blind spot.",
+      "tags": ["stack", "billing"]
+    },
+    {
+      "id": "k03",
+      "kind": "stack",
+      "question": "Our support notes mention onboarding issues -- what's the combined total revenue of the accounts affected?",
+      "expected_note_category": "onboarding",
+      "rationale": "Third note category (onboarding) with a certified measure (total_revenue). An earlier version of this case asked for 'combined MRR', which is not a certified measure -- intent extraction would have to silently substitute something else for it, which is exactly the confidently-wrong-shaped failure mode this whole layer exists to avoid, so it isn't the right thing to assert on for this case. Confirms the stacking chain isn't hardcoded to k01's account-scoping logic and that synthesis's grouped-vs-single-row rendering (see src/synthesis.py) still cites correctly when the accounts change.",
+      "tags": ["stack", "onboarding"]
+    }
+  ]
+}
