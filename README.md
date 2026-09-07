@@ -20,7 +20,7 @@ Live: `https://data-analyst-agent-production-316b.up.railway.app` | [Architectur
 
 ## Semantic Execution Gateway
 
-![Semantic Execution Gateway architecture](docs/images/gateway-architecture.jpeg)
+![Semantic Execution Gateway architecture](docs/images/gateway-architecture.jpg)
 
 ### What each layer does, and why I built it that way
 
