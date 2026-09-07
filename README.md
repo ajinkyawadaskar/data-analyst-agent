@@ -289,44 +289,7 @@ code turns that choice into the actual query. Ask for something that isn't
 on the list and the request is refused before it ever reaches the database,
 instead of running and quietly returning a wrong-but-plausible number.
 
-```mermaid
-flowchart TD
-    Q["User question<br/>e.g. 'Why are high-usage customers<br/>complaining about latency, and what do they pay us?'"]
-    Q --> ROUTER
-
-    ROUTER{"Router<br/>numeric ask, note ask, or both?"}
-    ROUTER -->|numeric| EXTRACT
-    ROUTER -->|about notes/feedback| RETRIEVE
-
-    subgraph STRUCT [" Structured path — the Semantic Gateway "]
-        EXTRACT["1. Intent extraction<br/>LLM outputs JSON: measure, dimensions, filters<br/>— never raw SQL"] --> CACHE
-        CACHE{"2. Cache check<br/>hash(intent + identity)"}
-        CACHE -- hit, ~1ms --> SYNTH
-        CACHE -- miss --> COMPILE
-        COMPILE["3. Compiler<br/>resolves joins from semantic_model.yaml,<br/>refuses anything off the certified list"] --> SECURITY
-        SECURITY["4. Access control<br/>rewrites the query so this identity only<br/>sees rows it's allowed to see"] --> GUARD
-        GUARD["5. Guardrails + BigQuery dry-run<br/>blocks unsafe/expensive SQL, then executes"] --> SYNTH
-    end
-
-    subgraph UNSTRUCT [" Unstructured path — retrieval "]
-        RETRIEVE["Vector search over synthetic<br/>support notes (LanceDB)"] --> NOTES["Matching notes +<br/>the customer IDs they mention"]
-    end
-
-    NOTES -. "for 'find who, then look up what'<br/>questions, feeds back in here" .-> EXTRACT
-    NOTES --> SYNTH
-
-    SYNTH["6. Synthesis<br/>combines the number and the notes,<br/>every claim traceable to its source"]
-    SYNTH --> OUT["Answer + Audit Envelope<br/>compiled SQL · join path · cache hit? ·<br/>note IDs · trace ID · latency"]
-
-    MCP["MCP server<br/>exposes this same pipeline as a tool<br/>for other AI agents to call directly"]
-    STRUCT -.-> MCP
-
-    style STRUCT fill:#e6f4ea,stroke:#2f9e44
-    style UNSTRUCT fill:#fff4e6,stroke:#e8890c
-    style SYNTH fill:#f3e8ff,stroke:#9c36b5
-    style OUT fill:#e6fcf5,stroke:#0ca678
-    style MCP fill:#e7f5ff,stroke:#1971c2
-```
+![Semantic Execution Gateway architecture](docs/images/gateway-architecture.jpeg)
 
 Every box above is also wrapped in tracing (OpenTelemetry → Langfuse) — not
 drawn as its own step because it isn't one path through the system, it's a

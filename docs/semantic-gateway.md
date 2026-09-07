@@ -12,59 +12,22 @@ Six layers, built one at a time over five days, each with its own Definition
 of Done. `main` is untouched behind `USE_SEMANTIC_GATEWAY`; every claim below
 was measured against real BigQuery and a real Gemini model, not asserted.
 
-```mermaid
-flowchart TD
-    Q["Question<br/>(+ optional on_behalf_of)"] --> ROUTE
+![Semantic Execution Gateway architecture](images/gateway-architecture.jpeg)
 
-    ROUTE{"router.classify()<br/>rule-based, Layer 5"}
-    ROUTE -->|structured| EXTRACT
-    ROUTE -->|unstructured| RETRIEVE1
-    ROUTE -->|stack| RETRIEVE2
+The diagram shows the happy path end to end: the router splits a question
+into the structured (compiled) path and/or the unstructured (retrieval)
+path, both converge on synthesis, and every step in between is traced
+(the dashed "Observability" boundary — OpenTelemetry spans exported to
+Langfuse). Two things it simplifies for readability, worth knowing:
 
-    RETRIEVE1["retrieve_notes()<br/>LanceDB + embeddings"] --> SYNTH1["synthesize()<br/>note-only answer"]
-
-    RETRIEVE2["retrieve_notes()<br/>find WHO"] --> EXTRACT2["intent_extraction<br/>find WHAT (measure only)"]
-    EXTRACT2 --> INJECT["append filter:<br/>user_id IN (retrieved ids)<br/>-- code-controlled, not the LLM's decision"]
-    INJECT --> EXTRACT
-
-    subgraph gateway["Layers 1-4: compile, secure, guard, cache"]
-        EXTRACT["extract_intent<br/>LLM -> Intent JSON"] --> CACHECHECK
-        CACHECHECK{"cache_check<br/>Layer 4: hash(Intent, principal)"}
-        CACHECHECK -->|hit| EXPLAIN
-        CACHECHECK -->|miss| COMPILE
-        COMPILE["compile<br/>Layer 1: Intent -> AST -> SQL<br/>unknown name -> refuses to compile"]
-        COMPILE -->|unsupported measure| FALLBACK["fallback to main's<br/>generate_sql (no Layer 2+ coverage)"]
-        COMPILE --> SECURITY
-        SECURITY["security_injection<br/>Layer 2: AND row-policy predicate<br/>onto the AST, never a string"]
-        SECURITY -->|no resolvable access| HALT
-        SECURITY --> GUARD
-        GUARD["guard<br/>main's guardrails.py + cost_guard.py,<br/>reused verbatim, byte-identical"]
-        GUARD -->|violation on compiled SQL| HALT2["halt -- COMPILER DEFECT,<br/>never retried"]
-        GUARD --> EXECUTE["execute on BigQuery"]
-        EXECUTE --> CACHEWRITE["cache_write<br/>rows, not just SQL"]
-        CACHEWRITE --> EXPLAIN["explain<br/>plain-English summary"]
-    end
-
-    FALLBACK --> GUARD
-    HALT["halt<br/>halt_reason stamped, audit envelope still returned"]
-    EXPLAIN --> SYNTH2["synthesize()<br/>stack: note + row, both cited"]
-    EXPLAIN --> OUT
-    SYNTH1 --> OUT
-    SYNTH2 --> OUT
-    HALT --> OUT
-    HALT2 --> OUT
-
-    OUT["AuditEnvelope<br/>answer, compiled_sql, proven_join_path,<br/>cache_hit, retrieved_note_ids, route_taken,<br/>audit_id, latency_ms"]
-
-    style gateway fill:#fff4e6,stroke:#e8890c
-    style HALT fill:#ffe3e3,stroke:#c92a2a
-    style HALT2 fill:#ffe3e3,stroke:#c92a2a
-    style OUT fill:#e6fcf5,stroke:#0ca678
-```
-
-Every node in `gateway` and every top-level step (`router`, `retrieval`,
-`synthesis`) emits its own OTel span (Layer 6) — visible as nested traces in
-Langfuse, not drawn separately above to keep the diagram readable.
+- **Denial and refusal paths aren't drawn.** Security Injection can refuse
+  outright (`SecurityContextError`, Layer 2's DoD case) and the Compiler
+  can refuse an off-model measure and fall back to `main`'s own
+  `generate_sql` — both real, both tested, neither shown above to keep the
+  happy path legible.
+- **The MCP Server box is a second entry point into the structured path**
+  (same intent → compile → security → guard → execute chain the router
+  drives), not something downstream of retrieval.
 
 ## The six layers, and what each one is actually for
 
