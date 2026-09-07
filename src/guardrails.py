@@ -260,18 +260,6 @@ def _check_table_allowlist(
 # ==========================================================================
 # Check 3: column validation
 # ==========================================================================
-
-# BigQuery pseudo-columns: legal in a query (qualified or bare) but never
-# returned by schema introspection, so the strict "does this column exist"
-# check below would otherwise reject them as hallucinated. _TABLE_SUFFIX is
-# how a date-sharded wildcard table (e.g. ga_sessions_*) gets bounded -- see
-# src/compiler/intent_compiler.py's mandatory partition predicate and
-# src/semantic/model.py's identical _PSEUDO_COLUMNS constant, which this
-# mirrors so the compiler's required output is never blocked by the same
-# check that is supposed to catch a hallucinated column, not a legal one.
-_BQ_PSEUDO_COLUMNS = {"_table_suffix", "_partitiontime", "_partitiondate"}
-
-
 def _schema_columns_for(schema_context: object, table_key: str) -> set[str] | None:
     """Best-effort lookup of a table's known column names from
     schema_context, trying the shapes documented at the top of this file.
@@ -361,12 +349,6 @@ def _check_columns(
             continue
         ref = ".".join(p.lower() for p in parts)
         if ref in select_aliases:
-            continue
-        if parts[-1].lower() in _BQ_PSEUDO_COLUMNS:
-            # A meta-column, not a table column -- e.g. bare _TABLE_SUFFIX or
-            # ga_sessions._TABLE_SUFFIX. Never appears in an introspected
-            # schema by design, so it is exempted here rather than treated
-            # as an unresolved reference.
             continue
         seen.add(ref)
 

@@ -30,19 +30,6 @@ def _load_metrics():
 
 
 def _load_graph():
-    """Build whichever path the feature flag selects.
-
-    The flag is read HERE, at the call site, rather than inside the graph
-    modules. get_settings() is lru_cached, so a module that reads the setting
-    itself would latch whatever value was current at first import -- which
-    makes the flag look broken when you flip it between runs.
-    """
-    if _use_gateway():
-        try:
-            from src.graph_semantic import build_graph
-        except ImportError:
-            return None
-        return build_graph()
     try:
         from src.graph import build_graph
     except ImportError:
@@ -50,29 +37,10 @@ def _load_graph():
     return build_graph()
 
 
-def _model_name() -> str:
-    try:
-        from src.config import get_settings
-
-        return get_settings().llm_model
-    except Exception:  # noqa: BLE001
-        return "unknown"
-
-
-def _use_gateway() -> bool:
-    try:
-        from src.config import get_settings
-
-        return bool(get_settings().use_semantic_gateway)
-    except Exception:  # noqa: BLE001 - readiness must not raise
-        return False
-
-
 def readiness() -> dict:
     cases = dataset.load()
     problems = cases.validate_shape()
     return {
-        "path": "semantic_gateway" if _use_gateway() else "legacy",
         "answer_cases": len(cases.answers()),
         "adversarial_cases": len(cases.adversarial()),
         "case_set_problems": problems,
@@ -94,13 +62,11 @@ def _run_answer_cases(graph, metrics, cases, *, ids=None):
             retries = r.get("retries_used", 0)
             print(f"{'✓' if passed else '✗'} {c.id}: {msg[:80]}")
             results.append({"id": c.id, "passed": passed, "msg": msg, "retries": retries,
-                            "route": r.get("route_taken"),
-                            "halt_reason": r.get("halt_reason"),
-                            "sql": r.get("sql", "")[:2000]})
+                            "sql": r.get("sql", "")[:300]})
         except Exception as e:
             print(f"✗ {c.id}: ERROR {e}")
             results.append({"id": c.id, "passed": False, "msg": str(e)[:300], "retries": -1})
-        time.sleep(4)  # 15 RPM cap vs up to 4 calls/case
+        time.sleep(1)
     return results
 
 
@@ -172,24 +138,10 @@ def main() -> int:
     valid_retries = [r["retries"] for r in answer_results if r.get("retries", -1) >= 0]
     avg_retries = sum(valid_retries) / max(1, len(valid_retries))
 
-    # Coverage vs accuracy are reported separately and never merged. Merging
-    # them either punishes the compiler for questions it deliberately does not
-    # model, or hides those questions entirely.
-    compiled = [r for r in answer_results if r.get("route") == "compiled"]
-    fell_back = [r for r in answer_results if r.get("route") == "fallback"]
-    compiled_pass = sum(1 for r in compiled if r["passed"])
-
     summary = {
-        "path": "semantic_gateway" if _use_gateway() else "legacy",
-        "model": _model_name(),
         "answer_accuracy": f"{ans_pass}/{ans_total} ({100*ans_pass/max(1,ans_total):.0f}%)",
         "adversarial_blocked": f"{adv_block}/{adv_total} ({100*adv_block/max(1,adv_total):.0f}%)",
         "avg_retries": round(avg_retries, 2),
-        "coverage": f"{len(compiled)}/{ans_total}" if _use_gateway() else None,
-        "accuracy_on_covered": (
-            f"{compiled_pass}/{len(compiled)}" if _use_gateway() and compiled else None
-        ),
-        "fell_back_to_legacy": [r["id"] for r in fell_back] if _use_gateway() else None,
         "answer_results": answer_results,
         "adversarial_results": adv_results,
     }
@@ -198,11 +150,6 @@ def main() -> int:
     print(f"Answer accuracy:     {summary['answer_accuracy']}")
     print(f"Adversarial blocked: {summary['adversarial_blocked']}")
     print(f"Avg retries:         {summary['avg_retries']}")
-    print(f"Path:                {summary['path']} ({summary['model']})")
-    if summary.get("coverage"):
-        print(f"Coverage:            {summary['coverage']} expressible by the model")
-        print(f"Accuracy on covered: {summary['accuracy_on_covered']}")
-        print(f"Fell back to legacy: {summary['fell_back_to_legacy']}")
 
     RESULTS_PATH.write_text(json.dumps(summary, indent=2))
     print(f"\nResults written to {RESULTS_PATH}")

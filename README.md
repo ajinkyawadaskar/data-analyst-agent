@@ -111,46 +111,17 @@ query. Bytes is the right signal.
 
 ### Accuracy
 
-Execution accuracy across 25 questions: **8/25 (32%)**
+Execution accuracy across 25 questions: **5/25 (20%)**
 Adversarial prompts blocked: **5/5 (100%)**
-Average retries per question: **0.28**
+Average retries per question: **0.96**
 
 Scored by comparing result sets, not SQL strings — two different queries can
 both be right, and a string comparison would fail the correct one.
 
-### I published the wrong number, and blamed the wrong thing
-
-The first version of this section said 20%, and blamed the model: "a
-lightweight model that struggles with complex joins." Both halves were wrong,
-and I only found out by re-running the evals before building on top of them.
-
-The eval run was committed at 22:11. The commit that fixed column validation
-rejecting `ORDER BY <select_alias>` landed at 23:20, 69 minutes later. So the
-published number was measured against a guardrail that was falsely rejecting
-the agent's own correct SQL. Re-running the identical 25 questions on the
-identical model:
-
-| | published (pre-fix) | re-run (post-fix) |
-|---|---|---|
-| execution accuracy | 5/25 (20%) | **8/25 (32%)** |
-| average retries | 0.96 | **0.28** |
-| cases returning no rows at all | 11 | **1** |
-
-The last row is the real story. Eleven of the twenty-five questions had been
-scored as failures because the agent blocked itself, retried, and gave up. One
-still is. Nothing about the model changed between those two columns.
-
-Two honest caveats. Three of the recovered cases now execute but return the
-wrong result — the bugfix converted "blocked" into "runs, still wrong," which
-is progress but not as much as +12 points suggests. And this is a single run
-against a non-deterministic model: one case that passed before (`tl03`) failed
-this time while four others started passing, so treat ±1 case as noise.
-
-The lesson is about measurement, not SQL. A guardrail bug and a model
-limitation produce the same symptom — no answer — and I attributed the whole
-gap to the model without checking. The number that matters for this project is
-still the second one: every adversarial prompt was caught, and nothing
-dangerous reached BigQuery.
+The 20% accuracy reflects Gemini 3.1 Flash Lite on the free tier — a
+lightweight model that struggles with complex joins and GA's nested schema.
+The number that matters for this project is the second one: every adversarial
+prompt was caught, and nothing dangerous reached BigQuery.
 
 ## Choices I made
 
@@ -261,132 +232,3 @@ files, and I wanted to be the one who made them.
 
 Python 3.11, BigQuery, sqlglot, LangGraph, Gemini 3.1 Flash Lite, FastAPI,
 DeepEval, Streamlit, Railway.
-
-Added by the Semantic Execution Gateway branch:
-
-- **Agent orchestration:** LangGraph, LangChain, Multi-Agent Orchestration,
-  Model Context Protocol (MCP) via FastMCP, Tool Calling
-- **Retrieval-Augmented Generation (RAG):** LanceDB (vector database),
-  Gemini embeddings, Semantic Search
-- **Data & query compilation:** sqlglot (AST-based query validation),
-  Pydantic, Row-Level Security (RLS), Semantic Caching, SQLite (WAL)
-- **Observability & evals:** OpenTelemetry, Langfuse (LLM Observability,
-  Distributed Tracing), pytest, DeepEval
-
-## Semantic Execution Gateway (`feature/semantic-gateway`, complete)
-
-The agent above works by letting the LLM write SQL and then checking it
-afterward. That catches a lot, but the model still has to correctly guess
-column names, join paths, and metric formulas from a compacted schema every
-single time — and a plausible-looking wrong query can slip through a
-guardrail that was never designed to know what "correct" means, only what's
-*safe*.
-
-This branch removes that guesswork instead of just policing it. The LLM
-stops writing SQL entirely. It picks a metric off a small, approved list —
-"total revenue," "conversion rate," and so on — and separate, deterministic
-code turns that choice into the actual query. Ask for something that isn't
-on the list and the request is refused before it ever reaches the database,
-instead of running and quietly returning a wrong-but-plausible number.
-
-![Semantic Execution Gateway architecture](docs/images/gateway-architecture.jpeg)
-
-The dashed box in the diagram is deliberate — every step inside it is
-traced (OpenTelemetry → Langfuse), so it's drawn as one boundary around the
-whole pipeline rather than a step of its own. Below is the same thing in
-words, one layer at a time, in enough depth that I can actually defend each
-decision out loud instead of just pointing at the picture.
-
-### What each layer does, and why I built it that way
-
-**1. A compiler instead of a smarter prompt.** Telling a model "don't
-invent columns" only lowers the odds — it doesn't stop it. So the model
-stops writing SQL. `semantic_model.yaml` lists every certified metric,
-dimension, and join; the model's only job is naming which one a question
-needs. A separate compiler turns that into real SQL with `sqlglot`, never
-string concatenation. Ask for something off the list and it fails to
-compile instead of guessing. Two questions in my eval set need an
-unsupported shape and fall back to the old LLM-writes-SQL path — counted
-honestly in the numbers below.
-
-**2. Access control the model can't talk its way around.** A request can
-carry an identity (tenant, region). The code rewrites the *compiled*
-query's AST to add a row filter, after the model is done — nothing to talk
-it out of. No valid access means an outright refusal, never a quiet empty
-result. Caveat I found and kept: this only applies to a query that actually
-touches a protected table.
-
-**3. One tool, exposed the standard way.** The same pipeline is wrapped as
-an MCP (Model Context Protocol) server — one tool, `query_semantic_metric`,
-plus a resource listing certified metrics — so any MCP client (Claude Code,
-Cursor) can call it directly. Tested with a real MCP client, not just a
-Python function call.
-
-**4. A cache that understands meaning, not wording.** "Revenue by region"
-and "regional revenue" are the same request. The cache key is a hash of the
-resolved intent plus identity, not the raw sentence, and it caches rows,
-not just SQL. Measured: 3.9s cold vs. ~1s cached — a 74% cut.
-
-**5. Finding "who," then computing "what."** Some questions need both —
-*"why are our top customers complaining, and what do they pay us?"* A
-router sends the fuzzy half to note search first; the customer IDs it finds
-get handed to the compiler as a hard filter, not left to the model's
-judgment. Took a few prompt iterations to stop the model from refusing the
-whole question.
-
-**6. Proof, not just an answer.** Every response carries an audit trail —
-SQL run, join path, cache hit, cited notes, latency. Every step is traced
-end-to-end via OpenTelemetry → Langfuse. Verified two ways: the export call
-reported success, and I confirmed the trace actually showed up in the
-dashboard.
-
-### The numbers
-
-Same 25 questions, same model, before and after:
-
-| | before (LLM writes SQL) | after (LLM picks a metric) |
-|---|---|---|
-| Got the right answer | 8/25 (32%) | 12/25 (48%) |
-| Could even attempt it | n/a | 23/25 |
-| Bad/dangerous queries blocked | 5/5 | 5/5 |
-
-A second, harder set of 18 questions — built specifically to test access
-control, caching, and the "find who, then compute what" pattern — passed
-**17/18**. The one miss was the model itself doing something slightly wrong
-mid-run, not a bug in the system, and it's written up honestly rather than
-swept under the rug. Full breakdown, including the bugs this testing
-actually caught and fixed: [docs/semantic-gateway.md](docs/semantic-gateway.md).
-
-### Getting this to production
-
-What's already shaped for it: stateless FastAPI, cost/safety checks before
-every execute, and an audit trail on every response — none of that needs
-rework. What would:
-
-- **Real identity, not simulated.** `on_behalf_of` is hand-typed today.
-  Production needs real auth (JWT/OAuth) resolving to a tenant/region
-  server-side, so the caller can't just claim one.
-- **Redis instead of SQLite for the cache.** SQLite WAL is fine for one
-  process; multiple API instances behind a load balancer need a shared
-  cache, not a local file. Deliberate, not an oversight — see IDEAS.md.
-- **Per-tenant rate limiting.** Today's cost ceiling stops one expensive
-  query, not one tenant hammering the API.
-- **Evals gated in CI**, not run by hand — a `semantic_model.yaml` change
-  that breaks a certified metric should fail the PR, not a demo.
-- **A second warehouse dialect proven, not just wired.** `dialect: bigquery`
-  threads through to `.sql(dialect=...)`, but nothing's actually run
-  against Athena or Snowflake yet — the seam exists, untested.
-- **Alerting on the traces**, not just visibility — a broken pipeline
-  should page someone, not sit in a dashboard nobody's watching.
-
-### Two things worth saying plainly
-
-- The support notes used for the "find who" feature are entirely made
-  up — generated from templates, not real customer data. Said in three
-  places: the data file itself, the code that generates it, and here.
-- The identity behind access control is simulated too. There's no real
-  login system — it's a stand-in that proves the access-control mechanism
-  genuinely works, not a claim of real multi-tenancy.
-
-Still sits behind a feature flag; the agent above is untouched and still
-live. Merging this into the main version is a separate decision, not made yet.
